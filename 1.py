@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from skimage import io, color
+import time
 
 
 class record_data:
@@ -126,14 +127,14 @@ class Model:
 
     @staticmethod
     def right_black(image, black_bias=0):
-        right_image = image[280:, :]
+        right_image = image[280:, :120]
         minimum = np.min(right_image)
 
         return minimum + black_bias
 
     @staticmethod
     def left_black(image, black_bias=0):
-        left_image = image[:240, :]
+        left_image = image[:240, :120]
         minimum = np.min(left_image)
         return minimum + black_bias
 
@@ -191,6 +192,12 @@ class Model:
                              ignore_index=True)
         return dataframe
 
+    def rotate_picture(self, image, angle):
+        (h, w) = image.shape[:2]
+        (cX, cY) = (w // 2, h // 2)
+        m = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+        rotated = cv2.warpAffine(image, m, (w, h))
+        return rotated
 
 class Controller:
     def __init__(self):
@@ -201,7 +208,8 @@ class Controller:
 
     def control(self):
         image_path = "D:/082516_AVAAVE-G3-13/"
-        for i in range(2738):
+        i = 0
+        while True:
             image_path_n = image_path + f'{i:04}' + ".tif"
             image_16bit, image_8bit = self.model.transfer_16bit_to_8bit(image_path_n)
             if image_16bit is None:
@@ -218,7 +226,7 @@ class Controller:
 
             bias_row = 0
             bias_column = 5
-            label_radius = 5
+            label_radius = 7
             for centre in centres:
                 label_text = str(centres.index(centre))
                 self.model.draw_rectangle(image_bright, centre[1], centre[0], label_text, label_radius)
@@ -226,7 +234,7 @@ class Controller:
                 left_row, left_column = self.model.find_left_centre(centre[1], centre[0], bias_row, bias_column)
                 self.model.draw_rectangle(image_bright, left_column, left_row, label_text, label_radius)
 
-            radius = 7
+            radius = label_radius
             ratio = 0.5
             max_brightness, max_row, max_column = self.model.find_max_brightness(image_8bit, centres)
             self.dataframe = self.model.write_to_table(image_16bit, self.dataframe, max_row, max_column,
@@ -234,9 +242,12 @@ class Controller:
             print(self.dataframe)
             #self.model.show_image(image_bright)
 
-            self.dataframe.to_csv('data5.csv', sep=',', encoding='utf-8')
-
+            self.dataframe.to_csv('data6.csv', sep=',', encoding='utf-8')
+            i += 1
 
 if __name__ == "__main__":
     controller = Controller()
     controller.control()
+
+    print(time.process_time())
+    print(time.perf_counter())
