@@ -23,7 +23,7 @@ class Model:
 
     @staticmethod
     def show_image(image):
-        cv2.imshow("1", image)
+        cv2.imshow('1', image)
         cv2.waitKey()
         cv2.destroyAllWindows()
 
@@ -54,8 +54,8 @@ class Model:
     @staticmethod
     def find_right_centre(thresh):
         m = cv2.moments(thresh)
-        x = int(m["m10"] / m["m00"])
-        y = int(m["m01"] / m["m00"])
+        x = int(m['m10'] / m['m00'])
+        y = int(m['m01'] / m['m00'])
         return x, y
 
     def quick_find_blob(self, image_8bit):
@@ -72,8 +72,8 @@ class Model:
                 centres.append((int(moments['m10'] / moments['m00']), int(moments['m01'] / moments['m00'])))
 
         m = cv2.moments(contours[m00.index(max(m00))])
-        right_centre_x = int(m["m10"] / m["m00"])
-        right_centre_y = int(m["m01"] / m["m00"])
+        right_centre_x = int(m['m10'] / m['m00'])
+        right_centre_y = int(m['m01'] / m['m00'])
         return right_centre_x, right_centre_y
 
     @staticmethod
@@ -109,7 +109,7 @@ class Model:
                 return False
         return True
 
-    def find_peak_point(self, image, surrender=6, ratio=0.4):
+    def find_peak_point(self, image, circle=6, ratio=0.4):
         centres = []
         image_max = np.max(image)
         start = int(image.shape[1] / 2)
@@ -117,7 +117,7 @@ class Model:
         for column in range(start, end):
             for row in range(0, image.shape[1]):
                 if image[row][column] > (ratio * image_max):
-                    if self.surrender(image, row, column, surrender):
+                    if self.surrender(image, row, column, circle):
                         centres.append([row, column])
 
         return centres
@@ -207,7 +207,7 @@ class Model:
         return rotated
 
     def control(self, image_path, current_image):
-        image_path_n = image_path + f'{current_image:04}' + ".tif"
+        image_path_n = image_path + f'{current_image:04}' + '.tif'
         image_16bit, image_8bit = self.model.transfer_16bit_to_8bit(image_path_n)
         if image_16bit is None:
             return None
@@ -215,7 +215,7 @@ class Model:
         image_bright = self.model.image_bright(image_8bit, alpha=3, beta=0)  # 用户输入
         # model.show_image(image_bright)
 
-        centres = self.model.find_peak_point(image_8bit, surrender=6, ratio=0.4)
+        centres = self.model.find_peak_point(image_8bit, circle=6, ratio=0.4)
         # print(centres)
 
         # centres = peak_local_max(image_8bit, num_peaks=20, exclude_border=2)
@@ -251,10 +251,10 @@ class Controller:
                      'Brightness'])
 
     def control(self):
-        image_path = "D:/082516_AVAAVE-G3-13/"
+        image_path = 'D:/082516_AVAAVE-G3-13/'
         i = 0
         while True:
-            image_path_n = image_path + f'{i:04}' + ".tif"
+            image_path_n = image_path + f'{i:04}' + '.tif'
             image_16bit, image_8bit = self.model.transfer_16bit_to_8bit(image_path_n)
             if image_16bit is None:
                 break
@@ -262,7 +262,7 @@ class Controller:
             image_bright = self.model.image_bright(image_8bit, alpha=3, beta=0)  # 用户输入
             # model.show_image(image_bright)
 
-            centres = self.model.find_peak_point(image_8bit, surrender=6, ratio=0.4)
+            centres = self.model.find_peak_point(image_8bit, circle=6, ratio=0.4)
             # print(centres)
 
             # centres = peak_local_max(image_8bit, num_peaks=20, exclude_border=2)
@@ -289,7 +289,7 @@ class Controller:
             self.dataframe.to_csv('data6.csv', sep=',', encoding='utf-8')
             i += 1
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     controller = Controller()
     controller.control()
 
