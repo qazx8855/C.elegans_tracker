@@ -180,7 +180,7 @@ class Model:
         left_light_array = np.where(left_light_array < 0, 0, left_light_array)
         return left_light_array
 
-    def write_to_table(self, image, dataframe, row, column, radius=5, ratio=0.6, bias_row=0, bias_column=0):
+    def calculate_brightness(self, image, dataframe, row, column, radius=5, ratio=0.6, bias_row=0, bias_column=0):
         left_centre_row, left_centre_column = self.find_left_centre(column, row, bias_row, bias_column)
 
         right_light_array = self.right_array(image, row, column, radius, ratio)
@@ -234,8 +234,8 @@ class Model:
         radius = label_radius
         ratio = 0.5
         max_brightness, max_row, max_column = self.model.find_max_brightness(image_8bit, centres)
-        self.dataframe = self.model.write_to_table(image_16bit, self.dataframe, max_row, max_column,
-                                                   radius, ratio, bias_row, bias_column)
+        self.dataframe = self.model.calculate_brightness(image_16bit, self.dataframe, max_row, max_column,
+                                                         radius, ratio, bias_row, bias_column)
         print(self.dataframe)
         self.model.show_image(image_bright)
 
@@ -281,8 +281,8 @@ class Controller:
             radius = label_radius
             ratio = 0.5
             max_brightness, max_row, max_column = self.model.find_max_brightness(image_8bit, centres)
-            self.dataframe = self.model.write_to_table(image_16bit, self.dataframe, max_row, max_column,
-                                                       radius, ratio, bias_row, bias_column)
+            self.dataframe = self.model.calculate_brightness(image_16bit, self.dataframe, max_row, max_column,
+                                                             radius, ratio, bias_row, bias_column)
             print(self.dataframe)
             self.model.show_image(image_bright)
 
