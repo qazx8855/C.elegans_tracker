@@ -103,8 +103,8 @@ class Model:
                     return False
         return True
 
-    def surrender(self, image, row, column, surrender):
-        for i in range(1, surrender + 1):
+    def surrender(self, image, row, column, circle):
+        for i in range(1, int(circle) + 1):
             if not self.surrender_value_compare(image, row, column, i):
                 return False
         return True
@@ -125,22 +125,25 @@ class Model:
     def draw_rectangle(self, image, column, row, label_text, radius=5, text_place=5):
         # 框一半边长
         # 标签离框的距离
-        cv2.rectangle(image, (column - radius, row - radius),
-                      (column + radius, row + radius), 255)
+        cv2.rectangle(image, (int(column - radius), int(row - radius)),
+                      (int(column + radius), int(row + radius)), 255)
         cv2.putText(image, label_text, (column - radius, row - radius - text_place),
                     cv2.FONT_HERSHEY_COMPLEX, 0.5, 255, 1)
 
     @staticmethod
     def right_black(image, black_bias=0):
-        right_image = image[:240, 388:]
+        right_image = image[:240, 388:450]
         minimum = np.min(right_image)
-
+        if minimum < 32862:
+            return 32862
         return minimum + black_bias
 
     @staticmethod
     def left_black(image, black_bias=0):
-        left_image = image[:240, :120]
+        left_image = image[:240, 30:120]
         minimum = np.min(left_image)
+        if minimum < 32862:
+            return 32862
         return minimum + black_bias
 
     def find_max_brightness(self, image, centres):
@@ -159,9 +162,8 @@ class Model:
         mean = array[np.nonzero(array)].mean()
         return mean
 
-    def right_array(self, image, row, column, radius, ratio, black_bias=0):
+    def right_array(self, image, row, column, radius, ratio, black):
         right_light_array = image[row - radius: row + radius + 1, column - radius: column + radius + 1]
-        black = self.right_black(image, black_bias)
         right_light_array -= black
 
         right_light_array = np.where(right_light_array < 0, 0, right_light_array)
@@ -170,33 +172,46 @@ class Model:
         right_light_array = np.where(right_light_array > (right_light_array_max * ratio), right_light_array, 0)
         return right_light_array
 
-    def left_array(self, image, left_centre_row, left_centre_column, right_light_array, radius, black_bias=0):
+    def left_array(self, image, left_centre_row, left_centre_column, right_light_array, radius, black):
         right_light_array_shape = np.where(right_light_array > 1, 1, 0)
         raw_left_light_array = image[left_centre_row - radius: left_centre_row + radius + 1,
                                left_centre_column - radius: left_centre_column + radius + 1]
         left_light_array = raw_left_light_array * right_light_array_shape
-        black = self.left_black(image, black_bias)
         left_light_array -= black
         left_light_array = np.where(left_light_array < 0, 0, left_light_array)
         return left_light_array
 
-    def calculate_brightness(self, image, dataframe, row, column, radius=5, ratio=0.6, bias_row=0, bias_column=0):
-        left_centre_row, left_centre_column = self.find_left_centre(column, row, bias_row, bias_column)
+    def calculate_brightness(self, image, image_num, row, column, right_black, left_black, radius=5, ratio=0.6,
+                             row_bias=0,
+                             column_bias=0):
+        left_row, left_column = self.find_left_centre(column, row, row_bias, column_bias)
 
-        right_light_array = self.right_array(image, row, column, radius, ratio)
+        right_light_array = self.right_array(image, row, column, radius, ratio, right_black)
         print(right_light_array)
         left_light_array = \
-            self.left_array(image, left_centre_row, left_centre_column, right_light_array, radius)
+            self.left_array(image, left_row, left_column, right_light_array, radius, left_black)
         print(left_light_array)
         right_brightness = self.mean_in_array(right_light_array)
         left_brightness = self.mean_in_array(left_light_array)
+        result_dict = {
+            'num': image_num,
+            'right_row': row, 'right_column': column, 'right_brightness': right_brightness,
+            'left_row': left_row, 'left_column': left_column, 'left_brightness': left_brightness,
+            'brightness': left_brightness / right_brightness
+        }
+        return result_dict
+
+    def write_csv(self, result_dict, dataframe):
         dataframe = \
-            dataframe.append(pd.DataFrame({'Right_row': [row], 'Right_column': [column],
-                                           'Right_brightness': [right_brightness], 'Left_row': [left_centre_row],
-                                           'Left_column': [left_centre_column],
-                                           'Left_brightness': [left_brightness],
-                                           'Brightness': [left_brightness / right_brightness]}),
-                             ignore_index=True)
+            dataframe.append(pd.DataFrame({
+                'Right_row': [result_dict['right_row']],
+                'Right_column': [result_dict['right_column']],
+                'Right_brightness': [result_dict['right_brightness']],
+                'Left_row': [result_dict['left_row']],
+                'Left_column': [result_dict['left_column']],
+                'Left_brightness': [result_dict['left_brightness']],
+                'Brightness': [result_dict['brightness']]}),
+                ignore_index=True)
         return dataframe
 
     def rotate_picture(self, image, angle):
@@ -205,6 +220,15 @@ class Model:
         m = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
         rotated = cv2.warpAffine(image, m, (w, h))
         return rotated
+
+    def label(self, image, centres, label_radius, bias_row, bias_column):
+        for centre in centres:
+            label_text = str(centres.index(centre))
+            self.draw_rectangle(image, centre[1], centre[0], label_text, label_radius)
+
+            left_row, left_column = self.find_left_centre(centre[1], centre[0], bias_row, bias_column)
+            self.draw_rectangle(image, left_column, left_row, label_text, label_radius)
+        return image
 
     def control(self, image_path, current_image):
         image_path_n = image_path + f'{current_image:04}' + '.tif'
@@ -240,7 +264,6 @@ class Model:
         self.model.show_image(image_bright)
 
         self.dataframe.to_csv('data7.csv', sep=',', encoding='utf-8')
-
 
 
 class Controller:
@@ -281,13 +304,15 @@ class Controller:
             radius = label_radius
             ratio = 0.5
             max_brightness, max_row, max_column = self.model.find_max_brightness(image_8bit, centres)
-            self.dataframe = self.model.calculate_brightness(image_16bit, self.dataframe, max_row, max_column,
-                                                             radius, ratio, bias_row, bias_column)
+            result_dict = self.model.calculate_brightness(image_16bit, max_row, max_column,
+                                                          radius, ratio, bias_row, bias_column)
+            self.dataframe = self.model.write_csv(result_dict, self.dataframe)
             print(self.dataframe)
             self.model.show_image(image_bright)
 
             self.dataframe.to_csv('data6.csv', sep=',', encoding='utf-8')
             i += 1
+
 
 if __name__ == '__main__':
     controller = Controller()
