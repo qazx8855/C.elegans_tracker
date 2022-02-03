@@ -1,3 +1,4 @@
+from PySide6 import QtGui
 from skimage import measure
 import numpy as np
 import cv2
@@ -9,14 +10,6 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from skimage import io, color
 import time
-
-
-class record_data:
-    def __init__(self):
-        self.right_centre_x = []
-        self.right_centre_y = []
-        self.left_brightness = []
-        self.right_brightness = []
 
 
 class Model:
@@ -264,6 +257,106 @@ class Model:
         self.model.show_image(image_bright)
 
         self.dataframe.to_csv('data7.csv', sep=',', encoding='utf-8')
+
+    def cv2QPix(self, img):
+        # cv 图片转换成 qt图片
+        qt_img = QtGui.QImage(img.data,  # 数据源
+                              img.shape[1],  # 宽度
+                              img.shape[0],  # 高度
+                              img.shape[1],  # 行字节数
+                              QtGui.QImage.Format_Grayscale8)
+        return QtGui.QPixmap.fromImage(qt_img)
+
+    def open_image(self, parameter_dict, num, image_path, flip):
+        if image_path != '':
+            image_path_n = image_path + '/' + f'{num:04}' + '.tif'
+            image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
+            if image_16bit is None:
+                print("wrong1")
+            if flip:
+                image_8bit = self.flip_y(image_8bit)
+                image_16bit = self.flip_y(image_16bit)
+
+            image_bright = self.image_bright(image_8bit, parameter_dict['alpha'], parameter_dict['beta'])
+
+            return image_16bit, image_8bit, image_bright
+
+        else:
+            print("wrong")
+
+    def set_parameter(self, ui, parameter_dict):
+        parameter_dict['alpha'] = float(ui.textEdit_alpha.toPlainText())
+        parameter_dict['beta'] = float(ui.textEdit_beta.toPlainText())
+
+        parameter_dict['peak_ratio'] = float(ui.textEdit_peak_ratio.toPlainText())
+        parameter_dict['peak_circle'] = int(ui.textEdit_peak_circle.toPlainText())
+
+        parameter_dict['right_ratio'] = float(ui.textEdit_right_ratio.toPlainText())
+        parameter_dict['right_circle'] = int(ui.textEdit_right_circle.toPlainText())
+
+        parameter_dict['row_bias'] = int(ui.textEdit_row_bias.toPlainText())
+        parameter_dict['column_bias'] = int(ui.textEdit_column_bias.toPlainText())
+
+        parameter_dict['left_ratio'] = float(ui.textEdit_left_ratio.toPlainText())
+        parameter_dict['left_circle'] = int(ui.textEdit_left_circle.toPlainText())
+
+        parameter_dict['right_black_bias'] = int(ui.textEdit_right_black_bias.toPlainText())
+        parameter_dict['left_black_bias'] = int(ui.textEdit_left_black_bias.toPlainText())
+
+    def set_black(self, ui, parameter_dict, image_16bit):
+        parameter_dict['right_black'] = self.right_black(
+            image_16bit,
+            parameter_dict['right_black_bias']
+        )
+        parameter_dict['left_black'] = self.left_black(
+            image_16bit,
+            parameter_dict['left_black_bias']
+        )
+
+        print(parameter_dict['left_black'], parameter_dict['right_black'])
+
+        ui.text_right_black.setText(str(parameter_dict['right_black']))
+        ui.text_left_black.setText(str(parameter_dict['left_black']))
+
+    def process_image(self, ui, parameter_dict, image_num, image_16bit, image_8bit, image_bright):
+        self.set_parameter(ui, parameter_dict)
+        self.set_black(ui, parameter_dict, image_16bit)
+
+        right_centres = self.find_peak_point(
+            image_8bit, parameter_dict['peak_circle'], parameter_dict['peak_ratio'])
+
+        image_bright = self.label(
+            image_bright, right_centres,
+            parameter_dict['label_radius'],
+            parameter_dict['row_bias'],
+            parameter_dict['column_bias']
+        )
+        ui.label_image.setPixmap(self.cv2QPix(image_bright))
+        ui.textEdit_num.setText(str(image_num))
+        max_brightness, max_row, max_column = self.find_max_brightness(image_8bit, right_centres)
+        result_dict = self.calculate_brightness(
+            image_16bit, image_num, max_row, max_column,
+            parameter_dict['right_black'], parameter_dict['left_black'],
+            parameter_dict['right_circle'], parameter_dict['right_ratio'],
+            parameter_dict['row_bias'],
+            parameter_dict['column_bias']
+        )
+        return result_dict
+
+    def set_result(self, ui, result_dict):
+        ui.text_right_coordinate.setText(
+            str(result_dict['right_row']) + ':' +
+            str(result_dict['right_column'])
+        )
+        ui.text_right_brightness.setText(str(result_dict['right_brightness']))
+
+        ui.text_left_coordinate.setText(
+            str(result_dict['left_row']) + ':' +
+            str(result_dict['left_column'])
+        )
+        ui.text_left_brightness.setText(str(result_dict['left_brightness']))
+
+        ui.text_brightness.setText(str(result_dict['brightness']))
 
 
 class Controller:
