@@ -12,14 +12,6 @@ from skimage import io, color
 import time
 
 
-class record_data:
-    def __init__(self):
-        self.right_centre_x = []
-        self.right_centre_y = []
-        self.left_brightness = []
-        self.right_brightness = []
-
-
 class Model:
 
     @staticmethod
@@ -275,7 +267,7 @@ class Model:
                               QtGui.QImage.Format_Grayscale8)
         return QtGui.QPixmap.fromImage(qt_img)
 
-    def open_image(self, ui, parameter_dict, num, image_path, flip):
+    def open_image(self, parameter_dict, num, image_path, flip):
         if image_path != '':
             image_path_n = image_path + '/' + f'{num:04}' + '.tif'
             image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
@@ -365,7 +357,6 @@ class Model:
         ui.text_left_brightness.setText(str(result_dict['left_brightness']))
 
         ui.text_brightness.setText(str(result_dict['brightness']))
-
 
 
 class Controller:
