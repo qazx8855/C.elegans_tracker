@@ -1,16 +1,11 @@
-from PySide6.QtCore import QObject, Signal, qDebug, QThread, Slot
-import os
-import re
-from PySide6 import QtWidgets, QtCore
-from main import *
-from PySide6.QtCore import *
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import *
-import time
-from PySide6.QtGui import *
-from PySide6 import QtGui
-import sys
-from main import *
+#
+# from PySide6 import QtWidgets, QtCore
+#
+# from PySide6.QtCore import *
+from PySide2 import QtWidgets, QtCore, QtGui
+
+from PySide2.QtCore import *
+
 
 import cv2
 import numpy as np

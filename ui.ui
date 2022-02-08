@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1557</width>
-    <height>842</height>
+    <height>995</height>
    </rect>
   </property>
   <property name="font">
@@ -694,7 +694,7 @@ p, li { white-space: pre-wrap; }
    <property name="geometry">
     <rect>
      <x>1370</x>
-     <y>540</y>
+     <y>480</y>
      <width>141</width>
      <height>41</height>
     </rect>
@@ -986,7 +986,7 @@ p, li { white-space: pre-wrap; }
    <property name="geometry">
     <rect>
      <x>1370</x>
-     <y>480</y>
+     <y>540</y>
      <width>141</width>
      <height>41</height>
     </rect>
@@ -995,7 +995,38 @@ p, li { white-space: pre-wrap; }
     <string>Pause</string>
    </property>
   </widget>
+  <widget class="MplWidget" name="MplWidget" native="true">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>610</y>
+     <width>571</width>
+     <height>351</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButton_generate_random_signal">
+   <property name="geometry">
+    <rect>
+     <x>580</x>
+     <y>550</y>
+     <width>131</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>PushButton</string>
+   </property>
+  </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MplWidget</class>
+   <extends>QWidget</extends>
+   <header>mplwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

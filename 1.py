@@ -1,35 +1,53 @@
-import os
-import re
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import *
-import time
-from PySide6.QtGui import *
-from PySide6 import QtGui
+# ------------------ PySide2 - Qt Designer - Matplotlib ------------------
+from PySide2.QtWidgets import *
+from PySide2.QtUiTools import QUiLoader
+from PySide2.QtCore import QFile
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+
 import sys
 from back_end import *
-from front_end import *
-
-import pyqtgraph as pg
+import os
+import re
 
 import numpy as np
-import pylab as pl
+import random
 
 
-# ------------------ MainWidget ------------------
-class MyWidget(QtWidgets.QWidget):
+# ------------------ MplWidget ------------------
+class MplWidget(QWidget):
+
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent)
+
+        self.canvas = FigureCanvas(Figure())
+
+        vertical_layout = QVBoxLayout()
+        vertical_layout.addWidget(self.canvas)
+        vertical_layout.addWidget(NavigationToolbar(self.canvas, self))
+
+        self.canvas.axes = self.canvas.figure.add_subplot(111)
+        self.setLayout(vertical_layout)
+
+    # ------------------ MainWidget ------------------
+
+
+class MainWidget(QWidget):
+
     def __init__(self):
-        super().__init__()
-        self.start = None
-        qfile = QFile('ui.ui')
-        qfile.open(QFile.ReadOnly)
-        qfile.close()
-        # 获取当前程序文件位置
-        self.cwd = os.getcwd()
-        # 从UI定义中动态创建一个相应的窗口对象
-        self.ui = QUiLoader().load(qfile)
+        QWidget.__init__(self)
+        designer_file = QFile("ui.ui")
+        designer_file.open(QFile.ReadOnly)
 
-        # self.ui = gui.Ui_Form()  # 实例化UI对象
-        # self.ui.setupUi(self)  # 初始化
+        loader = QUiLoader()
+        loader.registerCustomWidget(MplWidget)
+        self.ui = loader.load(designer_file, self)
+
+        designer_file.close()
+
+        self.ui.pushButton_generate_random_signal.clicked.connect(self.update_graph)
 
         self.image_name = ''
         self.image_path = ''
@@ -92,6 +110,7 @@ class MyWidget(QtWidgets.QWidget):
 
         self.ui.text_file_path.setText(self.image_path)
 
+
     def button_select_file(self):
         image_path_name, _ = QFileDialog.getOpenFileName(self, 'Select image', '', 'Image files(*.tif)')
 
@@ -114,11 +133,13 @@ class MyWidget(QtWidgets.QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
+
     def button_next(self):
         self.image_num += 1
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
+
 
     def button_last(self):
         self.image_num -= 1
@@ -126,10 +147,12 @@ class MyWidget(QtWidgets.QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
+
     def button_kill(self):
         self.image_process_thread.is_killed = True
         time.sleep(0.1)
         self.image_process_thread.is_killed = False
+
 
     def button_pause(self):
         if not self.image_process_thread.is_paused:
@@ -144,11 +167,13 @@ class MyWidget(QtWidgets.QWidget):
         # else:
         #     self.ui.button_pause.setText('Pause')
 
+
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
+
 
     def button_run(self):
         start = int(self.ui.textEdit_start.toPlainText())
@@ -163,6 +188,7 @@ class MyWidget(QtWidgets.QWidget):
                                                    self.flip, start, end)
         self.image_num += 1
 
+
     def button_refresh(self, bias_row=0, bias_column=0):
         self.set_parameter()
         self.parameter_dict['row_bias'] += bias_row
@@ -171,11 +197,13 @@ class MyWidget(QtWidgets.QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
+
     def checkbox_mirror_symmetry(self):
         self.flip = not self.flip
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
+
 
     def initialization_parameter(self):
         self.ui.textEdit_alpha.setText(str(self.parameter_dict['alpha']))
@@ -196,6 +224,7 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.textEdit_right_black_bias.setText(str(self.parameter_dict['right_black_bias']))
         self.ui.textEdit_left_black_bias.setText(str(self.parameter_dict['left_black_bias']))
 
+
     def set_parameter(self):
         self.parameter_dict['alpha'] = float(self.ui.textEdit_alpha.toPlainText())
         self.parameter_dict['beta'] = float(self.ui.textEdit_beta.toPlainText())
@@ -215,10 +244,12 @@ class MyWidget(QtWidgets.QWidget):
         self.parameter_dict['right_black_bias'] = int(self.ui.textEdit_right_black_bias.toPlainText())
         self.parameter_dict['left_black_bias'] = int(self.ui.textEdit_left_black_bias.toPlainText())
 
+
     def show_image(self, q_pixmap, result_dict):
         self.ui.label_image.setPixmap(q_pixmap)
         self.result_dict = result_dict
         self.set_result()
+
 
     def set_result(self):
         # 有用的
@@ -241,10 +272,25 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.text_right_black.setText(str(self.result_dict['right_black']))
         self.ui.text_left_black.setText(str(self.result_dict['left_black']))
 
+    def update_graph(self):
+        fs = 500
+        f = random.randint(1, 100)
+        ts = 1 / fs
+        length_of_signal = 100
+        t = np.linspace(0, 1, length_of_signal)
 
-if __name__ == '__main__':
-    app = QtWidgets.QApplication([])
-    widget = MyWidget()
-    # widget.show()
-    widget.ui.show()
-    sys.exit(app.exec())
+        cosinus_signal = np.cos(2 * np.pi * f * t)
+        sinus_signal = np.sin(2 * np.pi * f * t)
+
+        self.ui.MplWidget.canvas.axes.clear()
+        self.ui.MplWidget.canvas.axes.plot(t, cosinus_signal)
+        self.ui.MplWidget.canvas.axes.plot(t, sinus_signal)
+        self.ui.MplWidget.canvas.axes.legend(('cosinus', 'sinus'), loc='upper right')
+        self.ui.MplWidget.canvas.axes.set_title('Cosinus - Sinus Signals')
+        self.ui.MplWidget.canvas.draw()
+
+
+app = QApplication([])
+window = MainWidget()
+window.show()
+app.exec_()
