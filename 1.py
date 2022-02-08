@@ -110,7 +110,6 @@ class MainWidget(QWidget):
 
         self.ui.text_file_path.setText(self.image_path)
 
-
     def button_select_file(self):
         image_path_name, _ = QFileDialog.getOpenFileName(self, 'Select image', '', 'Image files(*.tif)')
 
@@ -133,13 +132,11 @@ class MainWidget(QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
-
     def button_next(self):
         self.image_num += 1
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
-
 
     def button_last(self):
         self.image_num -= 1
@@ -147,12 +144,10 @@ class MainWidget(QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
-
     def button_kill(self):
         self.image_process_thread.is_killed = True
         time.sleep(0.1)
         self.image_process_thread.is_killed = False
-
 
     def button_pause(self):
         if not self.image_process_thread.is_paused:
@@ -167,15 +162,14 @@ class MainWidget(QWidget):
         # else:
         #     self.ui.button_pause.setText('Pause')
 
-
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
-
     def button_run(self):
+        self.results = []
         start = int(self.ui.textEdit_start.toPlainText())
         end = int(self.ui.textEdit_end.toPlainText())
         self.image_num = start
@@ -188,7 +182,6 @@ class MainWidget(QWidget):
                                                    self.flip, start, end)
         self.image_num += 1
 
-
     def button_refresh(self, bias_row=0, bias_column=0):
         self.set_parameter()
         self.parameter_dict['row_bias'] += bias_row
@@ -197,13 +190,11 @@ class MainWidget(QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
-
     def checkbox_mirror_symmetry(self):
         self.flip = not self.flip
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
-
 
     def initialization_parameter(self):
         self.ui.textEdit_alpha.setText(str(self.parameter_dict['alpha']))
@@ -224,7 +215,6 @@ class MainWidget(QWidget):
         self.ui.textEdit_right_black_bias.setText(str(self.parameter_dict['right_black_bias']))
         self.ui.textEdit_left_black_bias.setText(str(self.parameter_dict['left_black_bias']))
 
-
     def set_parameter(self):
         self.parameter_dict['alpha'] = float(self.ui.textEdit_alpha.toPlainText())
         self.parameter_dict['beta'] = float(self.ui.textEdit_beta.toPlainText())
@@ -244,17 +234,53 @@ class MainWidget(QWidget):
         self.parameter_dict['right_black_bias'] = int(self.ui.textEdit_right_black_bias.toPlainText())
         self.parameter_dict['left_black_bias'] = int(self.ui.textEdit_left_black_bias.toPlainText())
 
-
     def show_image(self, q_pixmap, result_dict):
         self.ui.label_image.setPixmap(q_pixmap)
         self.result_dict = result_dict
         self.set_result()
+        self.results.append(result_dict)
+        self.draw_brightness(self.results)
+        self.draw_position(self.results)
+
+    def draw_position(self, results):
+        row = []
+        column = []
+        for dict_i in results:
+            row.append(dict_i['right_row'])
+            column.append(dict_i['right_column'])
+            row.append(dict_i['left_row'])
+            column.append(dict_i['left_column'])
+
+        self.ui.MplWidget_2.canvas.axes.clear()
+        self.ui.MplWidget_2.canvas.axes.scatter(column, row)
+        self.ui.MplWidget_2.canvas.axes.set_title('Position')
+        self.ui.MplWidget_2.canvas.draw()
+
+    def draw_brightness(self, results):
+        image_num = []
+        right_brightness = []
+        left_brightness = []
+        brightness = []
+        for dict_i in results:
+            image_num.append(dict_i['image_num'])
+            right_brightness.append((dict_i['right_brightness']))
+            left_brightness.append((dict_i['left_brightness']))
+            brightness.append((dict_i['brightness']))
+
+        self.ui.MplWidget.canvas.axes.clear()
+        self.ui.MplWidget.canvas.axes.plot(image_num, right_brightness)
+        self.ui.MplWidget.canvas.axes.plot(image_num, left_brightness)
+        self.ui.MplWidget.canvas.axes.plot(image_num, brightness)
+        self.ui.MplWidget.canvas.axes.legend(('Right', 'Left', 'Brightness'), loc='upper right')
+        self.ui.MplWidget.canvas.axes.set_title('Brightness')
+        self.ui.MplWidget.canvas.draw()
+
 
 
     def set_result(self):
         # 有用的
         self.initialization_parameter()
-        self.ui.textEdit_num.setText(str(self.result_dict['num']))
+        self.ui.textEdit_num.setText(str(self.result_dict['image_num']))
 
         self.ui.text_right_coordinate.setText(
             str(self.result_dict['right_row']) + ':' +
@@ -289,8 +315,8 @@ class MainWidget(QWidget):
         self.ui.MplWidget.canvas.axes.set_title('Cosinus - Sinus Signals')
         self.ui.MplWidget.canvas.draw()
 
-
-app = QApplication([])
-window = MainWidget()
-window.show()
-app.exec_()
+if __name__ == '__main__':
+    app = QApplication([])
+    window = MainWidget()
+    window.show()
+    app.exec_()

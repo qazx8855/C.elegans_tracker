@@ -3,13 +3,13 @@
 #
 # from PySide6.QtCore import *
 from PySide2 import QtWidgets, QtCore, QtGui
-
+import pandas as pd
 from PySide2.QtCore import *
-
 
 import cv2
 import numpy as np
 import time
+
 
 # class show_img_signal(QObject):
 #     progress = QtCore.Signal(QtGui.QPixmap, dict)
@@ -33,9 +33,8 @@ class ImageProcessingThread(QObject):
         self.is_paused = False
         self.is_killed = False
 
-
-
     def loop(self, parameter_dict, image_num, image_path, flip, start, end):
+        results = []
         for i in range(start, end + 1):
             self.image_processing(parameter_dict, i, image_path, flip)
             time.sleep(0.1)
@@ -51,6 +50,7 @@ class ImageProcessingThread(QObject):
 
         result_dict, image_bright = self.process_image(parameter_dict, image_num, image_16bit, image_8bit)
         q_pixmap = self.cv_to_qpix(image_bright)
+
         self.show_img_signal.emit(q_pixmap, result_dict)
 
     def open_image(self, parameter_dict, num, image_path, flip):
@@ -97,8 +97,6 @@ class ImageProcessingThread(QObject):
         result_dict['left_black'] = left_black
 
         return result_dict, image_bright
-
-
 
     def cv_to_qpix(self, img):
         # cv 图片转换成 qpix图片
@@ -239,7 +237,7 @@ class ImageProcessingThread(QObject):
         right_brightness = self.mean_in_array(right_light_array)
         left_brightness = self.mean_in_array(left_light_array)
         result_dict = {
-            'num': image_num,
+            'image_num': image_num,
             'right_row': row, 'right_column': column, 'right_brightness': right_brightness,
             'left_row': left_row, 'left_column': left_column, 'left_brightness': left_brightness,
             'brightness': left_brightness / right_brightness
@@ -274,5 +272,3 @@ class ImageProcessingThread(QObject):
             left_row, left_column = self.find_left_centre(centre[1], centre[0], bias_row, bias_column)
             self.draw_rectangle(image, left_column, left_row, label_text, label_radius)
         return image
-
-

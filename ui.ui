@@ -1000,7 +1000,7 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>50</x>
      <y>610</y>
-     <width>571</width>
+     <width>811</width>
      <height>351</height>
     </rect>
    </property>
@@ -1016,6 +1016,16 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="text">
     <string>PushButton</string>
+   </property>
+  </widget>
+  <widget class="MplWidget" name="MplWidget_2" native="true">
+   <property name="geometry">
+    <rect>
+     <x>910</x>
+     <y>610</y>
+     <width>561</width>
+     <height>351</height>
+    </rect>
    </property>
   </widget>
  </widget>
