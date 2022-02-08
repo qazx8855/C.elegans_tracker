@@ -76,8 +76,8 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.button_run.clicked.connect(self.button_run)
         self.ui.button_refresh.clicked.connect(self.button_refresh)
 
-        self.ui.button_pause.clicked.connect(self.image_process_thread.pause)
-        self.ui.button_stop.clicked.connect(self.image_process_thread.kill)
+        self.ui.button_pause.clicked.connect(self.button_pause)
+        self.ui.button_stop.clicked.connect(self.button_kill)
 
         self.ui.button_up.clicked.connect(lambda: self.button_refresh(-1, 0))
         self.ui.button_down.clicked.connect(lambda: self.button_refresh(1, 0))
@@ -122,9 +122,19 @@ class MyWidget(QtWidgets.QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
+    def button_kill(self):
+        self.image_process_thread.is_killed = True
+        time.sleep(0.1)
+        self.image_process_thread.is_killed = False
+
     def button_pause(self):
-        self.stop = not self.stop
-        print(self.stop)
+        if not self.image_process_thread.is_paused:
+            self.image_process_thread.is_paused = True
+            self.ui.button_pause.setText("Resume")
+        else:
+            self.image_process_thread.is_paused = False
+            self.ui.button_pause.setText("Pause")
+
         # if self.pause:
         #     self.ui.button_pause.setText('Continue')
         # else:

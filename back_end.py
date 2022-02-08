@@ -38,24 +38,14 @@ class ImageProcessingThread(QObject):
         self.is_paused = False
         self.is_killed = False
 
-    def pause(self):
-        print(self.is_paused)
-        self.is_paused = True
 
-    def resume(self):
-        print(self.is_paused)
-        self.is_paused = False
-
-    def kill(self):
-        print(self.is_killed)
-        self.is_killed = True
 
     def loop(self, parameter_dict, image_num, image_path, flip, start, end):
         for i in range(start, end + 1):
             self.image_processing(parameter_dict, i, image_path, flip)
-            time.sleep(5)
+            time.sleep(0.1)
             while self.is_paused:
-                time.sleep(0)
+                time.sleep(0.1)
 
             if self.is_killed:
                 break
