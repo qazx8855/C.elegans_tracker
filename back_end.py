@@ -24,6 +24,7 @@ import time
 class ImageProcessingThread(QObject):
     # 处理完毕图像数据信号
     show_img_signal = QtCore.Signal(QtGui.QPixmap, dict)
+    show_img_signal_loop = QtCore.Signal(QtGui.QPixmap, dict)
     # 线程接收参数信号
     start_image_process_thread_signal = QtCore.Signal(dict, int, str, bool)
     loop_signal = QtCore.Signal(dict, int, str, bool, int, int)
@@ -36,13 +37,22 @@ class ImageProcessingThread(QObject):
     def loop(self, parameter_dict, image_num, image_path, flip, start, end):
         results = []
         for i in range(start, end + 1):
-            self.image_processing(parameter_dict, i, image_path, flip)
+            self.image_processing_loop(parameter_dict, i, image_path, flip)
             time.sleep(0.1)
             while self.is_paused:
                 time.sleep(0.1)
 
             if self.is_killed:
                 break
+
+    def image_processing_loop(self, parameter_dict, image_num, image_path, flip):
+
+        image_16bit, image_8bit = self.open_image(parameter_dict, image_num, image_path, flip)
+
+        result_dict, image_bright = self.process_image(parameter_dict, image_num, image_16bit, image_8bit)
+        q_pixmap = self.cv_to_qpix(image_bright)
+
+        self.show_img_signal_loop.emit(q_pixmap, result_dict)
 
     def image_processing(self, parameter_dict, image_num, image_path, flip):
 

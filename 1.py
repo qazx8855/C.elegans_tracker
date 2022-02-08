@@ -11,6 +11,7 @@ import sys
 from back_end import *
 import os
 import re
+import csv
 
 import numpy as np
 import random
@@ -47,10 +48,12 @@ class MainWidget(QWidget):
 
         designer_file.close()
 
-        self.ui.pushButton_generate_random_signal.clicked.connect(self.update_graph)
-
         self.image_name = ''
         self.image_path = ''
+        self.cwd = os.getcwd()
+        self.save_path = self.cwd + '\\1.csv'
+
+        self.ui.text_file_path_2.setText(self.save_path)
 
         self.image_num = 0
         self.image_8bit = None
@@ -84,12 +87,14 @@ class MainWidget(QWidget):
         # 连接槽函数
         self.image_process_thread.start_image_process_thread_signal.connect(self.image_process_thread.image_processing)
         self.image_process_thread.show_img_signal.connect(self.show_image)
+        self.image_process_thread.show_img_signal_loop.connect(self.show_image_loop)
         self.image_process_thread.loop_signal.connect(self.image_process_thread.loop)
         # 开启线程,一直挂在后台
         self.thread.start()
 
         # 部件处理
         self.ui.button_select_file.clicked.connect(self.button_select_file)
+        self.ui.button_select_file_2.clicked.connect(self.button_save_data)
 
         self.ui.button_next.clicked.connect(self.button_next)
         self.ui.button_last.clicked.connect(self.button_last)
@@ -109,6 +114,13 @@ class MainWidget(QWidget):
         self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
 
         self.ui.text_file_path.setText(self.image_path)
+        self.dataframe = pd.DataFrame(
+            columns=['Right_row', 'Right_column', 'Right_brightness', 'Left_row', 'Left_column', 'Left_brightness',
+                     'Brightness'])
+
+    def button_save_data(self):
+        self.save_path, _ = QFileDialog.getSaveFileName(self, 'Select save path', self.cwd, 'Table(*.csv)')
+        self.ui.text_file_path_2.setText(self.save_path)
 
     def button_select_file(self):
         image_path_name, _ = QFileDialog.getOpenFileName(self, 'Select image', '', 'Image files(*.tif)')
@@ -157,10 +169,6 @@ class MainWidget(QWidget):
             self.image_process_thread.is_paused = False
             self.ui.button_pause.setText("Pause")
 
-        # if self.pause:
-        #     self.ui.button_pause.setText('Continue')
-        # else:
-        #     self.ui.button_pause.setText('Pause')
 
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
@@ -242,6 +250,31 @@ class MainWidget(QWidget):
         self.draw_brightness(self.results)
         self.draw_position(self.results)
 
+    def show_image_loop(self, q_pixmap, result_dict):
+        self.ui.label_image.setPixmap(q_pixmap)
+        self.result_dict = result_dict
+        self.set_result()
+        self.results.append(result_dict)
+        self.draw_brightness(self.results)
+        self.draw_position(self.results)
+        self.write_csv(self.results, self.dataframe)
+
+
+    def write_csv(self, results, dataframe):
+        for result_dict in results:
+            dataframe = \
+                dataframe.append(pd.DataFrame({
+                    'Right_row': [result_dict['right_row']],
+                    'Right_column': [result_dict['right_column']],
+                    'Right_brightness': [result_dict['right_brightness']],
+                    'Left_row': [result_dict['left_row']],
+                    'Left_column': [result_dict['left_column']],
+                    'Left_brightness': [result_dict['left_brightness']],
+                    'Brightness': [result_dict['brightness']]}),
+                    ignore_index=True)
+
+        dataframe.to_csv(self.save_path, sep=',', encoding='utf-8')
+
     def draw_position(self, results):
         row = []
         column = []
@@ -298,22 +331,22 @@ class MainWidget(QWidget):
         self.ui.text_right_black.setText(str(self.result_dict['right_black']))
         self.ui.text_left_black.setText(str(self.result_dict['left_black']))
 
-    def update_graph(self):
-        fs = 500
-        f = random.randint(1, 100)
-        ts = 1 / fs
-        length_of_signal = 100
-        t = np.linspace(0, 1, length_of_signal)
-
-        cosinus_signal = np.cos(2 * np.pi * f * t)
-        sinus_signal = np.sin(2 * np.pi * f * t)
-
-        self.ui.MplWidget.canvas.axes.clear()
-        self.ui.MplWidget.canvas.axes.plot(t, cosinus_signal)
-        self.ui.MplWidget.canvas.axes.plot(t, sinus_signal)
-        self.ui.MplWidget.canvas.axes.legend(('cosinus', 'sinus'), loc='upper right')
-        self.ui.MplWidget.canvas.axes.set_title('Cosinus - Sinus Signals')
-        self.ui.MplWidget.canvas.draw()
+    # def update_graph(self):
+    #     fs = 500
+    #     f = random.randint(1, 100)
+    #     ts = 1 / fs
+    #     length_of_signal = 100
+    #     t = np.linspace(0, 1, length_of_signal)
+    #
+    #     cosinus_signal = np.cos(2 * np.pi * f * t)
+    #     sinus_signal = np.sin(2 * np.pi * f * t)
+    #
+    #     self.ui.MplWidget.canvas.axes.clear()
+    #     self.ui.MplWidget.canvas.axes.plot(t, cosinus_signal)
+    #     self.ui.MplWidget.canvas.axes.plot(t, sinus_signal)
+    #     self.ui.MplWidget.canvas.axes.legend(('cosinus', 'sinus'), loc='upper right')
+    #     self.ui.MplWidget.canvas.axes.set_title('Cosinus - Sinus Signals')
+    #     self.ui.MplWidget.canvas.draw()
 
 if __name__ == '__main__':
     app = QApplication([])
