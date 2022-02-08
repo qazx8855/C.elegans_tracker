@@ -16,6 +16,14 @@ import cv2
 import numpy as np
 import time
 
+# class show_img_signal(QObject):
+#     progress = QtCore.Signal(QtGui.QPixmap, dict)
+#
+# class start_image_process_thread_signal(QObject):
+#     progress = QtCore.Signal(dict, int, str, bool)
+#
+# class Loop_signal (QObject):
+#     progress = QtCore.Signal(dict, int, str, bool, int, int)
 
 # 该类是作为程序后端负责打开并且处理图像的线程
 class ImageProcessingThread(QObject):
@@ -23,23 +31,64 @@ class ImageProcessingThread(QObject):
     show_img_signal = QtCore.Signal(QtGui.QPixmap, dict)
     # 线程接收参数信号
     start_image_process_thread_signal = QtCore.Signal(dict, int, str, bool)
+    loop_signal = QtCore.Signal(dict, int, str, bool, int, int)
 
     def __init__(self):
         super(ImageProcessingThread, self).__init__()
+        self.is_paused = False
+        self.is_killed = False
+
+    def pause(self):
+        print(self.is_paused)
+        self.is_paused = True
+
+    def resume(self):
+        print(self.is_paused)
+        self.is_paused = False
+
+    def kill(self):
+        print(self.is_killed)
+        self.is_killed = True
+
+    def loop(self, parameter_dict, image_num, image_path, flip, start, end):
+        for i in range(start, end + 1):
+            self.image_processing(parameter_dict, i, image_path, flip)
+            time.sleep(5)
+            while self.is_paused:
+                time.sleep(0)
+
+            if self.is_killed:
+                break
 
     def image_processing(self, parameter_dict, image_num, image_path, flip):
-        image_16bit, image_8bit, image_bright = \
-            self.open_image(parameter_dict, image_num, image_path, flip)
 
-        result_dict, image_bright = self.process_image(parameter_dict, image_num, image_16bit, image_8bit, image_bright)
+        image_16bit, image_8bit = self.open_image(parameter_dict, image_num, image_path, flip)
 
+        result_dict, image_bright = self.process_image(parameter_dict, image_num, image_16bit, image_8bit)
         q_pixmap = self.cv_to_qpix(image_bright)
         self.show_img_signal.emit(q_pixmap, result_dict)
 
-    def process_image(self, parameter_dict, image_num, image_16bit, image_8bit, image_bright):
+    def open_image(self, parameter_dict, num, image_path, flip):
+        if image_path != '':
+            image_path_n = image_path + '/' + f'{num:04}' + '.tif'
+            image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
+            if image_16bit is None:
+                print("wrong open image")
+
+            if flip:
+                image_8bit = self.flip_y(image_8bit)
+                image_16bit = self.flip_y(image_16bit)
+
+            return image_16bit, image_8bit
+        else:
+            print("wrong")
+
+    def process_image(self, parameter_dict, image_num, image_16bit, image_8bit):
 
         right_centres = self.find_peak_point(
             image_8bit, parameter_dict['peak_circle'], parameter_dict['peak_ratio'])
+        print(right_centres)
+        image_bright = self.image_bright(image_8bit, parameter_dict['alpha'], parameter_dict['beta'])
 
         image_bright = self.label(
             image_bright, right_centres,
@@ -48,7 +97,7 @@ class ImageProcessingThread(QObject):
             parameter_dict['column_bias']
         )
         max_brightness, max_row, max_column = self.find_max_brightness(image_8bit, right_centres)
-
+        print(000)
         right_black = self.right_black(image_16bit, parameter_dict['right_black_bias'])
         left_black = self.left_black(image_16bit, parameter_dict['left_black_bias'])
 
@@ -64,25 +113,6 @@ class ImageProcessingThread(QObject):
 
         return result_dict, image_bright
 
-    def open_image(self, parameter_dict, num, image_path, flip):
-        if image_path != '':
-            image_path_n = image_path + '/' + f'{num:04}' + '.tif'
-            image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
-            if image_16bit is None:
-                print("wrong open image")
-
-            image_bright = self.image_bright(image_8bit, parameter_dict['alpha'], parameter_dict['beta'])
-            print(flip)
-            if flip:
-                print(12344)
-                image_8bit = self.flip_y(image_8bit)
-                image_16bit = self.flip_y(image_16bit)
-                image_bright = self.flip_y(image_bright)
-
-            return image_16bit, image_8bit, image_bright
-
-        else:
-            print("wrong")
 
 
     def cv_to_qpix(self, img):
@@ -161,7 +191,6 @@ class ImageProcessingThread(QObject):
                     cv2.FONT_HERSHEY_COMPLEX, 0.5, 255, 1)
 
     def right_black(self, image, black_bias=0):
-        print(34)
         right_image = image[:240, 388:450]
         minimum = np.min(right_image)
         if minimum < 32862:

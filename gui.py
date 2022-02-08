@@ -1,7 +1,6 @@
 import os
 import re
 from PySide6 import QtWidgets, QtCore
-from main import *
 from PySide6.QtCore import *
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import *
@@ -28,8 +27,6 @@ class MyWidget(QtWidgets.QWidget):
         # self.ui = gui.Ui_Form()  # 实例化UI对象
         # self.ui.setupUi(self)  # 初始化
 
-        self.model = Model()
-
         self.image_name = ''
         self.image_path = ''
 
@@ -38,6 +35,7 @@ class MyWidget(QtWidgets.QWidget):
         self.image_16bit = None
         self.image_bright = None
 
+        self.stop = False
         self.flip = False
 
         self.parameter_dict = {
@@ -64,22 +62,31 @@ class MyWidget(QtWidgets.QWidget):
         # 连接槽函数
         self.image_process_thread.start_image_process_thread_signal.connect(self.image_process_thread.image_processing)
         self.image_process_thread.show_img_signal.connect(self.show_image)
+        self.image_process_thread.loop_signal.connect(self.image_process_thread.loop)
         # 开启线程,一直挂在后台
         self.thread.start()
 
-        # 信号处理
+        # 部件处理
         self.ui.button_select_file.clicked.connect(self.button_select_file)
+
         self.ui.button_next.clicked.connect(self.button_next)
         self.ui.button_last.clicked.connect(self.button_last)
+
         self.ui.button_go.clicked.connect(self.button_go)
         self.ui.button_run.clicked.connect(self.button_run)
         self.ui.button_refresh.clicked.connect(self.button_refresh)
 
+        self.ui.button_pause.clicked.connect(self.image_process_thread.pause)
+        self.ui.button_stop.clicked.connect(self.image_process_thread.kill)
+
+        self.ui.button_up.clicked.connect(lambda: self.button_refresh(-1, 0))
+        self.ui.button_down.clicked.connect(lambda: self.button_refresh(1, 0))
+        self.ui.button_left.clicked.connect(lambda: self.button_refresh(0, -1))
+        self.ui.button_right.clicked.connect(lambda: self.button_refresh(0, 1))
+
         self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
 
         self.ui.text_file_path.setText(self.image_path)
-
-
 
     def button_select_file(self):
         image_path_name, _ = QFileDialog.getOpenFileName(self, 'Select image', '', 'Image files(*.tif)')
@@ -115,6 +122,14 @@ class MyWidget(QtWidgets.QWidget):
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
+    def button_pause(self):
+        self.stop = not self.stop
+        print(self.stop)
+        # if self.pause:
+        #     self.ui.button_pause.setText('Continue')
+        # else:
+        #     self.ui.button_pause.setText('Pause')
+
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
         self.set_parameter()
@@ -122,17 +137,23 @@ class MyWidget(QtWidgets.QWidget):
                                                                          self.image_num, self.image_path, self.flip)
 
     def button_run(self):
-        # self.worker = Worker()
-        # self.worker.image_signal.connect(self.set_results)
         start = int(self.ui.textEdit_start.toPlainText())
         end = int(self.ui.textEdit_end.toPlainText())
+        self.image_num = start
         self.set_parameter()
-        for i in range(start, end+1):
-            self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                             i, self.image_path, self.flip)
+        # for i in range(start, end + 1):
+        # if self.stop:
+        #     break
+        self.image_process_thread.loop_signal.emit(self.parameter_dict,
+                                                   self.image_num, self.image_path,
+                                                   self.flip, start, end)
+        self.image_num += 1
 
-    def button_refresh(self):
+    def button_refresh(self, bias_row=0, bias_column=0):
         self.set_parameter()
+        self.parameter_dict['row_bias'] += bias_row
+        self.parameter_dict['column_bias'] += bias_column
+        self.initialization_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
 
@@ -141,8 +162,6 @@ class MyWidget(QtWidgets.QWidget):
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
                                                                          self.image_num, self.image_path, self.flip)
-
-
 
     def initialization_parameter(self):
         self.ui.textEdit_alpha.setText(str(self.parameter_dict['alpha']))
@@ -163,7 +182,6 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.textEdit_right_black_bias.setText(str(self.parameter_dict['right_black_bias']))
         self.ui.textEdit_left_black_bias.setText(str(self.parameter_dict['left_black_bias']))
 
-
     def set_parameter(self):
         self.parameter_dict['alpha'] = float(self.ui.textEdit_alpha.toPlainText())
         self.parameter_dict['beta'] = float(self.ui.textEdit_beta.toPlainText())
@@ -183,41 +201,15 @@ class MyWidget(QtWidgets.QWidget):
         self.parameter_dict['right_black_bias'] = int(self.ui.textEdit_right_black_bias.toPlainText())
         self.parameter_dict['left_black_bias'] = int(self.ui.textEdit_left_black_bias.toPlainText())
 
-
-
-    def process_image(self):
-        self.set_parameter()
-
-        right_centres = self.model.find_peak_point(
-            self.image_8bit, self.parameter_dict['peak_circle'], self.parameter_dict['peak_ratio'])
-
-        self.image_bright = self.model.label(
-            self.image_bright, right_centres,
-            self.parameter_dict['label_radius'],
-            self.parameter_dict['row_bias'],
-            self.parameter_dict['column_bias']
-        )
-
-        max_brightness, max_row, max_column = self.model.find_max_brightness(self.image_8bit, right_centres)
-        self.result_dict = self.model.calculate_brightness(
-            self.image_16bit, self.image_num, max_row, max_column,
-            self.parameter_dict['right_black'], self.parameter_dict['left_black'],
-            self.parameter_dict['right_circle'], self.parameter_dict['right_ratio'],
-            self.parameter_dict['row_bias'],
-            self.parameter_dict['column_bias']
-        )
-        self.results.append(self.result_dict)
-        self.set_result()
-
     def show_image(self, q_pixmap, result_dict):
         self.ui.label_image.setPixmap(q_pixmap)
         self.result_dict = result_dict
         self.set_result()
 
     def set_result(self):
-        #有用的
+        # 有用的
         self.initialization_parameter()
-        self.ui.textEdit_num.setText(str(self.image_num))
+        self.ui.textEdit_num.setText(str(self.result_dict['num']))
 
         self.ui.text_right_coordinate.setText(
             str(self.result_dict['right_row']) + ':' +
@@ -235,72 +227,6 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.text_right_black.setText(str(self.result_dict['right_black']))
         self.ui.text_left_black.setText(str(self.result_dict['left_black']))
 
-    # def set_black(self, image_16bit):
-    #     self.set_parameter()
-    #     self.parameter_dict['right_black'] = self.model.right_black(
-    #         self.image_16bit,
-    #         self.parameter_dict['right_black_bias']
-    #     )
-    #     self.parameter_dict['left_black'] = self.model.left_black(
-    #         self.image_16bit,
-    #         self.parameter_dict['left_black_bias']
-    #     )
-    #
-    #     self.ui.text_right_black.setText(str(self.parameter_dict['right_black']))
-    #     self.ui.text_left_black.setText(str(self.parameter_dict['left_black']))
-
-    def process_images(self, start, end=0):
-        self.results = []
-        self.image_num = start - 1
-        for i in range(5):
-            self.button_next()
-            time.sleep(1)
-            # if self.open_image(self.image_num) is False:
-            #     break
-
-            # if end != 0:
-            #     if start > end:
-            #         break
-
-    def set_results(self, result_dict):
-        if self.result_dict != {}:
-            self.model.set_result(self.ui, self.result_dict)
-        self.model.set_result(self.ui, result_dict)
-
-    def cv2QPix(self, img):
-        # cv 图片转换成 qt图片
-        qt_img = QtGui.QImage(img.data,  # 数据源
-                              img.shape[1],  # 宽度
-                              img.shape[0],  # 高度
-                              img.shape[1],  # 行字节数
-                              QtGui.QImage.Format_Grayscale8)
-        return QtGui.QPixmap.fromImage(qt_img)
-
-    def open_image(self, image_num):
-        self.image_16bit, self.image_8bit, self.image_bright = \
-            self.model.open_image(self.parameter_dict, image_num, self.image_path, self.flip)
-        self.model.set_parameter(self.ui, self.parameter_dict)
-        self.result_dict = self.model.process_image(self.ui, self.parameter_dict, image_num, self.image_16bit,
-                                                    self.image_8bit,
-                                                    self.image_bright)
-        if self.result_dict != {}:
-            self.model.set_result(self.ui, self.result_dict)
-
-        if self.image_path != '':
-            image_path_n = self.image_path + '/' + f'{num:04}' + '.tif'
-            self.image_16bit, self.image_8bit = self.model.transfer_16bit_to_8bit(image_path_n)
-            if self.image_16bit is None:
-                return False
-            if self.flip:
-                self.image_8bit = self.model.flip_y(self.image_8bit)
-                self.image_16bit = self.model.flip_y(self.image_16bit)
-
-            self.image_bright = self.model.image_bright(self.image_8bit, alpha=3, beta=0)
-            self.process_image()
-            self.ui.label_image.setPixmap(self.cv2QPix(self.image_bright))
-            self.ui.text_num.setText(str(self.image_num))
-            return True
-
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
@@ -308,4 +234,3 @@ if __name__ == '__main__':
     # widget.show()
     widget.ui.show()
     sys.exit(app.exec())
-
