@@ -1,38 +1,59 @@
-import os
-import re
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import *
-import time
-from PySide6.QtGui import *
-from PySide6 import QtGui
+# ------------------ PySide2 - Qt Designer - Matplotlib ------------------
+from PySide2.QtWidgets import *
+from PySide2.QtUiTools import QUiLoader
+from PySide2.QtCore import QFile
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+
 import sys
 from back_end import *
-from front_end import *
-
-import pyqtgraph as pg
+import os
+import re
+import csv
 
 import numpy as np
-import pylab as pl
+import random
 
 
-# ------------------ MainWidget ------------------
-class MyWidget(QtWidgets.QWidget):
+# ------------------ MplWidget ------------------
+class MplWidget(QWidget):
+
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent)
+
+        self.canvas = FigureCanvas(Figure())
+
+        vertical_layout = QVBoxLayout()
+        vertical_layout.addWidget(self.canvas)
+        vertical_layout.addWidget(NavigationToolbar(self.canvas, self))
+
+        self.canvas.axes = self.canvas.figure.add_subplot(111)
+        self.setLayout(vertical_layout)
+
+    # ------------------ MainWidget ------------------
+
+
+class MainWidget(QWidget):
+
     def __init__(self):
-        super().__init__()
-        self.start = None
-        qfile = QFile('ui.ui')
-        qfile.open(QFile.ReadOnly)
-        qfile.close()
-        # 获取当前程序文件位置
-        self.cwd = os.getcwd()
-        # 从UI定义中动态创建一个相应的窗口对象
-        self.ui = QUiLoader().load(qfile)
+        QWidget.__init__(self)
+        designer_file = QFile("ui.ui")
+        designer_file.open(QFile.ReadOnly)
 
-        # self.ui = gui.Ui_Form()  # 实例化UI对象
-        # self.ui.setupUi(self)  # 初始化
+        loader = QUiLoader()
+        loader.registerCustomWidget(MplWidget)
+        self.ui = loader.load(designer_file, self)
+
+        designer_file.close()
 
         self.image_name = ''
         self.image_path = ''
+        self.cwd = os.getcwd()
+        self.save_path = self.cwd + '\\1.csv'
+
+        self.ui.text_file_path_2.setText(self.save_path)
 
         self.image_num = 0
         self.image_8bit = None
@@ -66,12 +87,14 @@ class MyWidget(QtWidgets.QWidget):
         # 连接槽函数
         self.image_process_thread.start_image_process_thread_signal.connect(self.image_process_thread.image_processing)
         self.image_process_thread.show_img_signal.connect(self.show_image)
+        self.image_process_thread.show_img_signal_loop.connect(self.show_image_loop)
         self.image_process_thread.loop_signal.connect(self.image_process_thread.loop)
         # 开启线程,一直挂在后台
         self.thread.start()
 
         # 部件处理
         self.ui.button_select_file.clicked.connect(self.button_select_file)
+        self.ui.button_select_file_2.clicked.connect(self.button_save_data)
 
         self.ui.button_next.clicked.connect(self.button_next)
         self.ui.button_last.clicked.connect(self.button_last)
@@ -91,6 +114,13 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
 
         self.ui.text_file_path.setText(self.image_path)
+        self.dataframe = pd.DataFrame(
+            columns=['Right_row', 'Right_column', 'Right_brightness', 'Left_row', 'Left_column', 'Left_brightness',
+                     'Brightness'])
+
+    def button_save_data(self):
+        self.save_path, _ = QFileDialog.getSaveFileName(self, 'Select save path', self.cwd, 'Table(*.csv)')
+        self.ui.text_file_path_2.setText(self.save_path)
 
     def button_select_file(self):
         image_path_name, _ = QFileDialog.getOpenFileName(self, 'Select image', '', 'Image files(*.tif)')
@@ -139,10 +169,6 @@ class MyWidget(QtWidgets.QWidget):
             self.image_process_thread.is_paused = False
             self.ui.button_pause.setText("Pause")
 
-        # if self.pause:
-        #     self.ui.button_pause.setText('Continue')
-        # else:
-        #     self.ui.button_pause.setText('Pause')
 
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
@@ -151,6 +177,7 @@ class MyWidget(QtWidgets.QWidget):
                                                                          self.image_num, self.image_path, self.flip)
 
     def button_run(self):
+        self.results = []
         start = int(self.ui.textEdit_start.toPlainText())
         end = int(self.ui.textEdit_end.toPlainText())
         self.image_num = start
@@ -219,11 +246,74 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.label_image.setPixmap(q_pixmap)
         self.result_dict = result_dict
         self.set_result()
+        self.results.append(result_dict)
+        self.draw_brightness(self.results)
+        self.draw_position(self.results)
+
+    def show_image_loop(self, q_pixmap, result_dict):
+        self.ui.label_image.setPixmap(q_pixmap)
+        self.result_dict = result_dict
+        self.set_result()
+        self.results.append(result_dict)
+        self.draw_brightness(self.results)
+        self.draw_position(self.results)
+        self.write_csv(self.results, self.dataframe)
+
+
+    def write_csv(self, results, dataframe):
+        for result_dict in results:
+            dataframe = \
+                dataframe.append(pd.DataFrame({
+                    'Right_row': [result_dict['right_row']],
+                    'Right_column': [result_dict['right_column']],
+                    'Right_brightness': [result_dict['right_brightness']],
+                    'Left_row': [result_dict['left_row']],
+                    'Left_column': [result_dict['left_column']],
+                    'Left_brightness': [result_dict['left_brightness']],
+                    'Brightness': [result_dict['brightness']]}),
+                    ignore_index=True)
+
+        dataframe.to_csv(self.save_path, sep=',', encoding='utf-8')
+
+    def draw_position(self, results):
+        row = []
+        column = []
+        for dict_i in results:
+            row.append(dict_i['right_row'])
+            column.append(dict_i['right_column'])
+            row.append(dict_i['left_row'])
+            column.append(dict_i['left_column'])
+
+        self.ui.MplWidget_2.canvas.axes.clear()
+        self.ui.MplWidget_2.canvas.axes.scatter(column, row)
+        self.ui.MplWidget_2.canvas.axes.set_title('Position')
+        self.ui.MplWidget_2.canvas.draw()
+
+    def draw_brightness(self, results):
+        image_num = []
+        right_brightness = []
+        left_brightness = []
+        brightness = []
+        for dict_i in results:
+            image_num.append(dict_i['image_num'])
+            right_brightness.append((dict_i['right_brightness']))
+            left_brightness.append((dict_i['left_brightness']))
+            brightness.append((dict_i['brightness']))
+
+        self.ui.MplWidget.canvas.axes.clear()
+        self.ui.MplWidget.canvas.axes.plot(image_num, right_brightness)
+        self.ui.MplWidget.canvas.axes.plot(image_num, left_brightness)
+        self.ui.MplWidget.canvas.axes.plot(image_num, brightness)
+        self.ui.MplWidget.canvas.axes.legend(('Right', 'Left', 'Brightness'), loc='upper right')
+        self.ui.MplWidget.canvas.axes.set_title('Brightness')
+        self.ui.MplWidget.canvas.draw()
+
+
 
     def set_result(self):
         # 有用的
         self.initialization_parameter()
-        self.ui.textEdit_num.setText(str(self.result_dict['num']))
+        self.ui.textEdit_num.setText(str(self.result_dict['image_num']))
 
         self.ui.text_right_coordinate.setText(
             str(self.result_dict['right_row']) + ':' +
@@ -241,10 +331,25 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.text_right_black.setText(str(self.result_dict['right_black']))
         self.ui.text_left_black.setText(str(self.result_dict['left_black']))
 
+    # def update_graph(self):
+    #     fs = 500
+    #     f = random.randint(1, 100)
+    #     ts = 1 / fs
+    #     length_of_signal = 100
+    #     t = np.linspace(0, 1, length_of_signal)
+    #
+    #     cosinus_signal = np.cos(2 * np.pi * f * t)
+    #     sinus_signal = np.sin(2 * np.pi * f * t)
+    #
+    #     self.ui.MplWidget.canvas.axes.clear()
+    #     self.ui.MplWidget.canvas.axes.plot(t, cosinus_signal)
+    #     self.ui.MplWidget.canvas.axes.plot(t, sinus_signal)
+    #     self.ui.MplWidget.canvas.axes.legend(('cosinus', 'sinus'), loc='upper right')
+    #     self.ui.MplWidget.canvas.axes.set_title('Cosinus - Sinus Signals')
+    #     self.ui.MplWidget.canvas.draw()
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication([])
-    widget = MyWidget()
-    # widget.show()
-    widget.ui.show()
-    sys.exit(app.exec())
+    app = QApplication([])
+    window = MainWidget()
+    window.show()
+    app.exec_()
