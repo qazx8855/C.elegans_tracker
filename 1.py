@@ -207,6 +207,7 @@ class MainWidget(QWidget):
                                                                          self.image_num, self.image_path, self.flip)
 
     def checkbox_mirror_symmetry(self):
+
         self.flip = not self.flip
         self.set_parameter()
         self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
