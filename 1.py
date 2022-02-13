@@ -1,4 +1,4 @@
-# ------------------ PySide2 - Qt Designer - Matplotlib ------------------
+import PySide2
 from PySide2.QtWidgets import *
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QFile
@@ -89,14 +89,14 @@ class MainWidget(QWidget):
 
         self.thread = QThread()
         # 实例化线程类
-        self.image_process_thread = ImageProcessingThread()
+        self.i_thread = ImageProcessingThread()
         # moveToThread方法把实例化线程移到Thread管理
-        self.image_process_thread.moveToThread(self.thread)
+        self.i_thread.moveToThread(self.thread)
         # 连接槽函数
-        self.image_process_thread.start_image_process_thread_signal.connect(self.image_process_thread.image_processing)
-        self.image_process_thread.show_img_signal.connect(self.show_image)
-        self.image_process_thread.show_img_signal_loop.connect(self.show_image_loop)
-        self.image_process_thread.loop_signal.connect(self.image_process_thread.loop)
+        self.i_thread.start_image_process_thread_signal.connect(self.i_thread.image_processing)
+        self.i_thread.show_img_signal.connect(self.show_image)
+        self.i_thread.show_img_signal_loop.connect(self.show_image_loop)
+        self.i_thread.loop_signal.connect(self.i_thread.loop)
         # 开启线程,一直挂在后台
         self.thread.start()
 
@@ -126,6 +126,18 @@ class MainWidget(QWidget):
             columns=['Right_row', 'Right_column', 'Right_brightness', 'Left_row', 'Left_column', 'Left_brightness',
                      'Brightness'])
 
+    def closeEvent(self, event):
+        reply = QtWidgets.QMessageBox.question(self,
+                                               'Quit',
+                                               "Quit?",
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                               QtWidgets.QMessageBox.No)
+        if reply == QtWidgets.QMessageBox.Yes:
+            event.accept()
+            os._exit(0)
+        else:
+            event.ignore()
+
     def button_save_data(self):
         self.save_path, _ = QFileDialog.getSaveFileName(self, 'Select save path', self.cwd, 'Table(*.csv)')
         self.ui.text_file_path_2.setText(self.save_path)
@@ -149,40 +161,38 @@ class MainWidget(QWidget):
             print(self.image_num)
 
         self.set_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def button_next(self):
         self.image_num += 1
         self.set_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def button_last(self):
         self.image_num -= 1
         self.set_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def button_kill(self):
-        self.image_process_thread.is_killed = True
-        time.sleep(0.1)
-        self.image_process_thread.is_killed = False
+        self.i_thread.is_killed = True
 
     def button_pause(self):
-        if not self.image_process_thread.is_paused:
-            self.image_process_thread.is_paused = True
+        if not self.i_thread.is_paused:
+            self.i_thread.is_paused = True
             self.ui.button_pause.setText("Resume")
         else:
-            self.image_process_thread.is_paused = False
+            self.i_thread.is_paused = False
             self.ui.button_pause.setText("Pause")
 
 
     def button_go(self):
         self.image_num = int(self.ui.textEdit_num.toPlainText())
         self.set_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def button_run(self):
         self.results = []
@@ -190,12 +200,13 @@ class MainWidget(QWidget):
         end = int(self.ui.textEdit_end.toPlainText())
         self.image_num = start
         self.set_parameter()
+        self.i_thread.is_killed = False
         # for i in range(start, end + 1):
         # if self.stop:
         #     break
-        self.image_process_thread.loop_signal.emit(self.parameter_dict,
-                                                   self.image_num, self.image_path,
-                                                   self.flip, start, end)
+        self.i_thread.loop_signal.emit(self.parameter_dict,
+                                       self.image_num, self.image_path,
+                                       self.flip, start, end)
         self.image_num += 1
 
     def button_refresh(self, bias_row=0, bias_column=0):
@@ -203,14 +214,14 @@ class MainWidget(QWidget):
         self.parameter_dict['row_bias'] += bias_row
         self.parameter_dict['column_bias'] += bias_column
         self.initialization_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def checkbox_mirror_symmetry(self):
         self.flip = not self.flip
         self.set_parameter()
-        self.image_process_thread.start_image_process_thread_signal.emit(self.parameter_dict,
-                                                                         self.image_num, self.image_path, self.flip)
+        self.i_thread.start_image_process_thread_signal.emit(self.parameter_dict,
+                                                             self.image_num, self.image_path, self.flip)
 
     def initialization_parameter(self):
         self.ui.textEdit_alpha.setText(str(self.parameter_dict['alpha']))
@@ -350,6 +361,11 @@ class MainWidget(QWidget):
     #     self.ui.MplWidget.canvas.draw()
 
 if __name__ == '__main__':
+    dirname = os.path.dirname(PySide2.__file__)
+    plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
+    print(plugin_path)
+
     app = QApplication([])
     window = MainWidget()
     window.show()
