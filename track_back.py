@@ -3,7 +3,8 @@
 #
 # from PySide6.QtCore import *
 
-
+import os
+from datetime import datetime
 from PySide2 import QtWidgets, QtCore, QtGui
 import pandas as pd
 from PySide2.QtCore import *
@@ -32,7 +33,7 @@ class ImageProcessingThread(QObject):
     # 处理完毕图像数据信号
     show_img_signal = QtCore.Signal(QtGui.QPixmap)
     # 线程接收参数信号
-    start_image_process_thread_signal = QtCore.Signal(int, int, int, int, int, int, str, int)
+    start_image_signal = QtCore.Signal()
 
     def __init__(self):
         super(ImageProcessingThread, self).__init__()
@@ -46,15 +47,37 @@ class ImageProcessingThread(QObject):
             columns=['x', 'y'])
         self.images = []
 
+        self.stage = self.core.get_xy_stage_position()
+
+        self.low = 0
+        self.high = 65536
+
+        self.flip = False
+        self.angle = 2
+
         self.start_time = time.time()
+        # For 30 min
+        self.track_time = 30
 
         self.mode = 1
 
-        self.right = True
-        self.flip = False
+        # for mode1
+        self.tracking_frequency = 2
 
-        self.angle = 2
-        self.stage = self.core.get_xy_stage_position()
+        # for mode2
+        self.bias_x = 100
+        self.bias_y = 100
+
+        self.right = True
+
+        self.c_x = 834
+        self.c_y = 600
+
+        self.cwd = os.getcwd()
+        date = datetime.today().strftime('%Y-%m-%d')
+        self.save_path = self.cwd + '\\' + date
+
+        self.show_image_fre = 10
 
         with Bridge() as bridge:
             # get object representing micro-manager core
@@ -68,7 +91,7 @@ class ImageProcessingThread(QObject):
             auto_shutter = self.core.get_property('Core', 'AutoShutter')
             self.core.set_property('Core', 'AutoShutter', 0)
 
-    def loop(self, tracking_time, c_x, c_y, fre, x_bias, y_bias, data_folder, image_fre=10):
+    def loop(self):
         i = 0
         j = 0
         while 1:
@@ -82,12 +105,12 @@ class ImageProcessingThread(QObject):
 
             if self.track:
                 if self.mode == 1:
-                    if i < fre:
-                        i, x, y = self.mode1(image, c_x, c_y, i, fre)
+                    if i < self.tracking_frequency:
+                        i, x, y = self.mode1(image, self.c_x, self.c_y, i, self.tracking_frequency)
                 elif self.mode == 2:
-                    x, y = self.mode2(image, c_x, c_y, x_bias, y_bias)
+                    x, y = self.mode2(image, self.c_x, self.c_y, self.x_bias, self.y_bias)
 
-                if time.time() - self.start_time < tracking_time * 60:
+                if time.time() - self.start_time < self.tracking_time * 60:
                     break
 
                 if self.record:
@@ -97,7 +120,7 @@ class ImageProcessingThread(QObject):
                     }), ignore_index=True)
                     self.images.append(image)
 
-            if j == image_fre:
+            if j == self.show_image_fre:
                 q_image = self.cv_to_qpix(image)
                 j = 0
 
@@ -106,7 +129,7 @@ class ImageProcessingThread(QObject):
             else:
                 j += 1
 
-        self.sava_data(data_folder)
+        self.sava_data(self.save_path)
 
     def sava_data(self, data_folder):
         data_name = data_folder + '\\points.csv'

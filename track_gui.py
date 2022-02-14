@@ -3,14 +3,12 @@ from PySide2.QtWidgets import *
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QFile
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
 
+import os
 from datetime import datetime
 import sys
 from back_end import *
-import os
+
 import re
 import csv
 
@@ -36,17 +34,6 @@ class MainWidget(QWidget):
         date = datetime.today().strftime('%Y-%m-%d')
         self.save_path = self.cwd + '\\' + date
         self.ui.text_file_path_2.setText(self.save_path)
-        self.parameter_dict = {
-            'alpha': 3, 'beta': 0,
-            'peak_circle': 6, 'peak_ratio': 0.4,
-            'row_bias': 0, 'column_bias': 0,
-            'label_radius': 7,
-            'right_black': 0, 'left_black': 0,
-            'right_black_bias': 0, 'left_black_bias': 0,
-            'right_circle': 5, 'right_ratio': 0.6,
-            'left_circle': 5, 'left_ratio': 0.6,
-        }
-
 
         self.thread = QThread()
         # 实例化线程类
@@ -61,6 +48,50 @@ class MainWidget(QWidget):
         # 开启线程,一直挂在后台
         self.thread.start()
 
+        # 设置默认按钮状态
+        self.ui.radioButton_180.setChecked(True)
+        self.ui.mode1.setChecked(True)
+        self.ui.right.setChecked(True)
+
+        self.ui.buttonGroup.buttonClicked.connect(self.angle_clicked)
+        self.ui.buttonGroup_2.buttonClicked.connect(self.mode_clicked)
+        self.ui.buttonGroup_3.buttonClicked.connect(self.area_clicked)
+
+        self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
+
+    def checkbox_mirror_symmetry(self):
+        self.i_thread.flip = not self.i_thread.flip
+
+        print(self.i_thread.flip)
+
+    def angle_clicked(self):
+        button = self.ui.buttonGroup.checkedButton()
+        if button.text() == '0':
+            self.i_thread.angle = 0
+
+        else:
+            self.i_thread.angle = int(int(button.text()) / 90)
+
+        print(self.i_thread.angle)
+
+    def mode_clicked(self):
+        button = self.ui.buttonGroup_2.checkedButton()
+        if button.text() == 'Mode tracking frequency':
+            self.i_thread.mode = 1
+        elif button.text() == 'Mode Limit area':
+            self.i_thread.mode = 2
+
+        print(self.i_thread.mode)
+
+    def area_clicked(self):
+        button = self.ui.buttonGroup_3.checkedButton()
+        if button.text() == 'Track right':
+            self.i_thread.right = True
+        elif button.text() == 'Track left':
+            self.i_thread.right = False
+
+        print(self.i_thread.right)
+
     def button_saving_folder(self):
         self.save_path, _ = QFileDialog.getSaveFileName(self, 'Select save path', self.cwd, 'Image(*.tif)')
         self.ui.text_file_path_2.setText(self.save_path)
@@ -69,8 +100,10 @@ class MainWidget(QWidget):
         self.i_thread.is_killed = False
         self.i_thread.track = False
         self.i_thread.record = False
+        self.i_thread.start_image_signal.emit()
 
     def track(self):
+        self.i_thread.start_time = time.time()
         self.i_thread.track = True
 
     def record(self):
