@@ -46,7 +46,7 @@ class ImageProcessingThread(QObject):
 
         self.start_time = time.time()
         # For 30 min
-        self.tracking_time = 30
+        self.tracking_time = 5
 
         self.mode = 1
 
@@ -103,6 +103,7 @@ class ImageProcessingThread(QObject):
                     # if i < self.tracking_frequency:
                     i, x, y = self.mode1(image, self.c_x, self.c_y, i, self.tracking_frequency)
                 elif self.mode == 2:
+                    print(3)
                     x, y = self.mode2(image, self.c_x, self.c_y, self.x_bias, self.y_bias)
 
                 if self.record:
@@ -140,7 +141,6 @@ class ImageProcessingThread(QObject):
 
     def mode1(self, image, c_x, c_y, i, fre):
         max_point = self.find_max_point(image)
-
         stage_position = self.core.get_xy_stage_position()
         stage_x = stage_position.get_x()
         stage_y = stage_position.get_y()
@@ -166,12 +166,13 @@ class ImageProcessingThread(QObject):
         return i, stage_x, stage_y
 
     def mode2(self, image, c_x, c_y, x_bias, y_bias):
+        print(c_x,c_y)
         max_point = self.find_max_point(image)
-
+        print(max_point)
         stage_position = self.core.get_xy_stage_position()
         stage_x = stage_position.get_x()
         stage_y = stage_position.get_y()
-
+        print(stage_x)
         x1 = (c_x - max_point[0]) * 1.1
         y1 = (c_y - max_point[1]) * 1.1
 
@@ -185,8 +186,8 @@ class ImageProcessingThread(QObject):
 
         print(x,y)
 
-        if not max_point[0] - x_bias < max_point[0] < max_point[0] + x_bias \
-                and max_point[1] - y_bias < max_point[1] < max_point[1] + y_bias:
+        if not c_x - x_bias < max_point[0] < c_x + x_bias \
+                and c_y - y_bias < max_point[1] < c_y + y_bias:
             self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
         return x, y
