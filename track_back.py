@@ -9,7 +9,6 @@ from PySide2 import QtWidgets, QtCore, QtGui
 import pandas as pd
 from PySide2.QtCore import *
 
-
 from skimage import io
 
 import cv2
@@ -19,21 +18,13 @@ from pycromanager import Bridge
 from matplotlib import pyplot as plt
 
 
-# class show_img_signal(QObject):
-#     progress = QtCore.Signal(QtGui.QPixmap, dict)
-#
-# class start_image_process_thread_signal(QObject):
-#     progress = QtCore.Signal(dict, int, str, bool)
-#
-# class Loop_signal (QObject):
-#     progress = QtCore.Signal(dict, int, str, bool, int, int)
-
 # 该类是作为程序后端负责打开并且处理图像的线程
 class ImageProcessingThread(QObject):
     # 处理完毕图像数据信号
     show_img_signal = QtCore.Signal(QtGui.QPixmap)
     # 线程接收参数信号
     start_image_signal = QtCore.Signal()
+
 
     def __init__(self):
         super(ImageProcessingThread, self).__init__()
@@ -47,7 +38,7 @@ class ImageProcessingThread(QObject):
             columns=['x', 'y'])
         self.images = []
 
-        self.stage = self.core.get_xy_stage_position()
+
 
         self.low = 0
         self.high = 65536
@@ -57,7 +48,7 @@ class ImageProcessingThread(QObject):
 
         self.start_time = time.time()
         # For 30 min
-        self.track_time = 30
+        self.tracking_time = 30
 
         self.mode = 1
 
@@ -90,11 +81,13 @@ class ImageProcessingThread(QObject):
             # Here we set a property of the core itself, but same code works for device properties
             auto_shutter = self.core.get_property('Core', 'AutoShutter')
             self.core.set_property('Core', 'AutoShutter', 0)
+            self.stage = self.core.get_xy_stage_position()
 
     def loop(self):
         i = 0
         j = 0
-        while 1:
+        while True:
+            print(i,j)
             while self.is_paused:
                 time.sleep(0.1)
 
