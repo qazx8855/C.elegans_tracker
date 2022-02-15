@@ -35,7 +35,6 @@ class ImageProcessingThread(QObject):
         self.is_killed = False
 
     def loop(self, parameter_dict, image_num, image_path, flip, start, end):
-        results = []
         for i in range(start, end + 1):
             self.image_processing_loop(parameter_dict, i, image_path, flip)
             time.sleep(0.1)

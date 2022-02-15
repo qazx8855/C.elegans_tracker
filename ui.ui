@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1557</width>
-    <height>995</height>
+    <width>1563</width>
+    <height>991</height>
    </rect>
   </property>
   <property name="font">
@@ -73,7 +73,7 @@
    </property>
    <property name="text">
     <string>Welcome to 
-C.elegans Tracker!
+C.elegans Analysis!
 Please Select 
  a image file </string>
    </property>
@@ -703,32 +703,6 @@ p, li { white-space: pre-wrap; }
     <string>Stop</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="button_next_5">
-   <property name="geometry">
-    <rect>
-     <x>890</x>
-     <y>10</y>
-     <width>141</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Help</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="button_next_6">
-   <property name="geometry">
-    <rect>
-     <x>1060</x>
-     <y>10</y>
-     <width>141</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>About</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_left_brightness_3">
    <property name="geometry">
     <rect>
@@ -825,7 +799,7 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>990</x>
      <y>540</y>
-     <width>51</width>
+     <width>71</width>
      <height>31</height>
     </rect>
    </property>
@@ -840,9 +814,9 @@ p, li { white-space: pre-wrap; }
   <widget class="QTextEdit" name="textEdit_end">
    <property name="geometry">
     <rect>
-     <x>1110</x>
+     <x>1090</x>
      <y>540</y>
-     <width>51</width>
+     <width>71</width>
      <height>31</height>
     </rect>
    </property>
@@ -995,8 +969,8 @@ p, li { white-space: pre-wrap; }
   <widget class="QPushButton" name="button_select_file_2">
    <property name="geometry">
     <rect>
-     <x>580</x>
-     <y>460</y>
+     <x>710</x>
+     <y>10</y>
      <width>128</width>
      <height>41</height>
     </rect>
@@ -1008,9 +982,9 @@ p, li { white-space: pre-wrap; }
   <widget class="QTextBrowser" name="text_file_path_2">
    <property name="geometry">
     <rect>
-     <x>570</x>
-     <y>520</y>
-     <width>301</width>
+     <x>860</x>
+     <y>10</y>
+     <width>471</width>
      <height>51</height>
     </rect>
    </property>
