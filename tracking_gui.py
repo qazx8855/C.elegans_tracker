@@ -81,6 +81,9 @@ class MainWidget(QWidget):
         self.ui.stop.clicked.connect(self.button_kill)
         self.ui.button_saving_folder.clicked.connect(self.button_saving_folder)
 
+        self.st = time.time()
+        self.et = time.time()
+
     def low(self):
         string = self.ui.low.toPlainText()
         if string.isdigit():
@@ -162,14 +165,15 @@ class MainWidget(QWidget):
         self.i_thread.is_killed = False
         self.i_thread.track = False
         self.i_thread.record = False
-        print(1)
         self.i_thread.start_image_signal.emit()
 
     def track(self):
-        self.i_thread.start_time = time.time()
         self.i_thread.track = True
 
     def record(self):
+        self.i_thread.points = []
+        self.i_thread.images = []
+        self.i_thread.start_time = time.time()
         self.i_thread.record = True
 
     def button_kill(self):
@@ -184,7 +188,6 @@ class MainWidget(QWidget):
             self.ui.button_pause.setText("Pause")
 
     def show_image(self, q_pixmap):
-        print(q_pixmap)
         self.ui.label_image.setPixmap(q_pixmap)
 
     def closeEvent(self, event):
