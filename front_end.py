@@ -9,7 +9,7 @@ import time
 from PySide6.QtGui import *
 from PySide6 import QtGui
 import sys
-from back_end import *
+from analysis_back import *
 from gui import *
 
 class ImageShowThread:

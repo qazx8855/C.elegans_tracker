@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.figure import Figure
 
 import sys
-from back_end import *
+from analysis_back import *
 import os
 import re
 import csv
