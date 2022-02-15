@@ -184,6 +184,7 @@ class MainWidget(QWidget):
             self.ui.button_pause.setText("Pause")
 
     def show_image(self, q_pixmap):
+        print(q_pixmap)
         self.ui.label_image.setPixmap(q_pixmap)
 
     def closeEvent(self, event):

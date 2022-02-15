@@ -69,19 +69,23 @@ class ImageProcessingThread(QObject):
         self.save_path = self.cwd + '\\' + date
 
         self.show_image_fre = 10
+        self.core, self.stage = self.get_core()
 
-        with Bridge() as bridge:
-            # get object representing micro-manager core
-            self.core = bridge.get_core()
+    def get_core(self):
+        bridge = Bridge()
+        # get object representing micro-manager core
+        core = bridge.get_core()
 
-            #### Calling core functions ###
-            exposure = self.core.get_exposure()
+        #### Calling core functions ###
+        exposure = core.get_exposure()
 
-            #### Setting and getting properties ####
-            # Here we set a property of the core itself, but same code works for device properties
-            auto_shutter = self.core.get_property('Core', 'AutoShutter')
-            self.core.set_property('Core', 'AutoShutter', 0)
-            self.stage = self.core.get_xy_stage_position()
+        #### Setting and getting properties ####
+        # Here we set a property of the core itself, but same code works for device properties
+        auto_shutter = core.get_property('Core', 'AutoShutter')
+        core.set_property('Core', 'AutoShutter', 0)
+        stage = core.get_xy_stage_position()
+        print(core, stage)
+        return core, stage
 
     def loop(self):
         i = 0
@@ -97,13 +101,18 @@ class ImageProcessingThread(QObject):
             image = self.snap_image()
 
             if self.track:
+                print(1)
                 if self.mode == 1:
-                    if i < self.tracking_frequency:
-                        i, x, y = self.mode1(image, self.c_x, self.c_y, i, self.tracking_frequency)
+                    # if i < self.tracking_frequency:
+                    i, x, y = self.mode1(image, self.c_x, self.c_y, i, self.tracking_frequency)
                 elif self.mode == 2:
+                    print(4)
                     x, y = self.mode2(image, self.c_x, self.c_y, self.x_bias, self.y_bias)
 
-                if time.time() - self.start_time < self.tracking_time * 60:
+                print(time.time() - self.start_time)
+                print(self.tracking_time * 60)
+                if time.time() - self.start_time > self.tracking_time * 60:
+                    print(2)
                     break
 
                 if self.record:
@@ -113,14 +122,17 @@ class ImageProcessingThread(QObject):
                     }), ignore_index=True)
                     self.images.append(image)
 
-            if j == self.show_image_fre:
-                q_image = self.cv_to_qpix(image)
-                j = 0
+            # if j == self.show_image_fre:
+            image_8bit = self.transfer_16bit_to_8bit(image)
+            q_image = self.cv_to_qpix(image_8bit)
 
-                self.show_img_signal.emit(q_image)
+            print(q_image)
+            j = 0
 
-            else:
-                j += 1
+            self.show_img_signal.emit(q_image)
+
+            # else:
+            #     j += 1
 
         self.sava_data(self.save_path)
 
@@ -134,9 +146,12 @@ class ImageProcessingThread(QObject):
     def mode1(self, image, c_x, c_y, i, fre):
         max_point = self.find_max_point(image)
 
-        stage_x = self.stage.get_x()
+        stage_position = self.core.get_xy_stage_position()
+        stage_x = stage_position.get_x()
+        stage_y = stage_position.get_y()
 
-        stage_y = self.stage.get_y()
+        print(stage_x)
+        print(stage_y)
 
         x1 = (c_x - max_point[0]) * 1.1
         y1 = (c_y - max_point[1]) * 1.1
@@ -149,7 +164,11 @@ class ImageProcessingThread(QObject):
             x = stage_x + x1
             y = stage_y + y1
 
+        print(x)
+        print(y)
+
         if i == fre:
+            self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
             i = 0
         else:
@@ -159,9 +178,9 @@ class ImageProcessingThread(QObject):
     def mode2(self, image, c_x, c_y, x_bias, y_bias):
         max_point = self.find_max_point(image)
 
-        stage_x = self.stage.get_x()
-
-        stage_y = self.stage.get_y()
+        stage_position = self.core.get_xy_stage_position()
+        stage_x = stage_position.get_x()
+        stage_y = stage_position.get_y()
 
         x1 = (c_x - max_point[0]) * 1.1
         y1 = (c_y - max_point[1]) * 1.1
@@ -176,6 +195,7 @@ class ImageProcessingThread(QObject):
 
         if not max_point[0] - x_bias < max_point[0] < max_point[0] + x_bias \
                 and max_point[1] - y_bias < max_point[1] < max_point[1] + y_bias:
+            self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
         return x, y
 
@@ -198,6 +218,17 @@ class ImageProcessingThread(QObject):
         point = (c, r)
         return point
 
+    def transfer_16bit_to_8bit(self, image):
+        if image is None:
+            return None, None
+        min_16bit = np.min(image)
+        max_16bit = np.max(image)
+        image_8bit = np.array(np.rint(255 * ((image - min_16bit) / (max_16bit - min_16bit))),
+                              dtype=np.uint8)
+
+        image_8bit = cv2.resize(image_8bit, dsize=(600, 600), interpolation=cv2.INTER_CUBIC)
+        return image_8bit
+
     def cv_to_qpix(self, img):
         # cv 图片转换成 qpix图片
         qt_img = QtGui.QImage(img.data,  # 数据源
@@ -205,6 +236,7 @@ class ImageProcessingThread(QObject):
                               img.shape[0],  # 高度
                               img.shape[1],  # 行字节数
                               QtGui.QImage.Format_Grayscale8)
+        print(qt_img)
         return QtGui.QPixmap.fromImage(qt_img)
 
     def label(self, image, centres, label_radius, bias_row, bias_column):
