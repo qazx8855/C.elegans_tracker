@@ -165,16 +165,20 @@ class MainWidget(QWidget):
         self.i_thread.is_killed = False
         self.i_thread.track = False
         self.i_thread.record = False
+        self.ui.track.setText("Track")
+        self.ui.track.setText("Record")
         self.i_thread.start_image_signal.emit()
 
     def track(self):
         self.i_thread.track = True
+        self.ui.track.setText("Tracking")
 
     def record(self):
         self.i_thread.points = []
         self.i_thread.images = []
         self.i_thread.start_time = time.time()
         self.i_thread.record = True
+        self.ui.track.setText("Recording")
 
     def button_kill(self):
         self.i_thread.is_killed = True

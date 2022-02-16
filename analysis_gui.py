@@ -17,6 +17,7 @@ import numpy as np
 import random
 
 
+
 # ------------------ MplWidget ------------------
 class MplWidget(QWidget):
 

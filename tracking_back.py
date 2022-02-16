@@ -26,7 +26,6 @@ class ImageProcessingThread(QObject):
     # 线程接收参数信号
     start_image_signal = QtCore.Signal()
 
-
     def __init__(self):
         super(ImageProcessingThread, self).__init__()
         self.is_paused = False
@@ -107,12 +106,11 @@ class ImageProcessingThread(QObject):
                     x, y = self.mode2(image, self.c_x, self.c_y, self.x_bias, self.y_bias)
 
                 if self.record:
-                    self.points.append([x,y])
+                    self.points.append([x, y])
                     self.images.append(image)
                     print(time.time() - self.start_time)
                     if time.time() - self.start_time > self.tracking_time * 60:
                         break
-
 
             # if j == self.show_image_fre:
             image_8bit = self.transfer_16bit_to_8bit(image)
@@ -124,18 +122,15 @@ class ImageProcessingThread(QObject):
             # else:
             #     j += 1
 
-
         self.sava_data(self.save_path)
 
-
-    def sava_data(self, data_folder):
-        print(len(self.images))
+    def sava_data(self, save_path):
+        if not os.path.exists(save_path):
+            os.mkdir(save_path)
         for i in range(len(self.images)):
-            # data_name = data_folder +'/' + str(i) + '.tif'
-            # data_name = '/2022-02-15/' + str(i) + '.tif'
-            # print(os.path.join(data_folder, str(i) + '.tif'))
-            io.imsave(str(i) + '.tif', self.images[i])
-        with open('points.csv', 'w', newline ='') as f:
+            data_name = save_path + '\\' + str(i) + '.tif'
+            io.imsave(data_name, self.images[i])
+        with open(save_path + '\\' + 'points.csv', 'w', newline='') as f:
             write = csv.writer(f)
             write.writerows(self.points)
 
@@ -156,7 +151,6 @@ class ImageProcessingThread(QObject):
             x = stage_x + x1
             y = stage_y + y1
 
-
         if i == fre:
             self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
@@ -166,7 +160,7 @@ class ImageProcessingThread(QObject):
         return i, stage_x, stage_y
 
     def mode2(self, image, c_x, c_y, x_bias, y_bias):
-        print(c_x,c_y)
+        print(c_x, c_y)
         max_point = self.find_max_point(image)
         print(max_point)
         stage_position = self.core.get_xy_stage_position()
@@ -184,7 +178,7 @@ class ImageProcessingThread(QObject):
             x = stage_x + x1
             y = stage_y + y1
 
-        print(x,y)
+        print(x, y)
 
         if not c_x - x_bias < max_point[0] < c_x + x_bias \
                 and c_y - y_bias < max_point[1] < c_y + y_bias:
