@@ -9,7 +9,7 @@ import sys
 
 from pandas.core.dtypes.inference import is_number
 
-from tracking_back import *
+from Wormtracker_back import *
 
 import re
 import csv
@@ -25,7 +25,7 @@ class MainWidget(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        designer_file = QFile("track.ui")
+        designer_file = QFile("Wormtracker.ui")
         designer_file.open(QFile.ReadOnly)
 
         loader = QUiLoader()
