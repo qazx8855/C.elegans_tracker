@@ -38,8 +38,8 @@ class ImageProcessingThread(QObject):
 
 
 
-        self.low = 0
-        self.high = 65536
+        self.low = 2
+        self.high = 0
 
         self.flip = False
         self.angle = 2
@@ -124,7 +124,8 @@ class ImageProcessingThread(QObject):
 
             # if j == self.show_image_fre:
             image_8bit = self.transfer_16bit_to_8bit(image)
-            q_image = self.cv_to_qpix(image_8bit)
+            image_b = self.image_bright(image_8bit, self.low, self.high)
+            q_image = self.cv_to_qpix(image_b)
             j = 0
 
             self.show_img_signal.emit(q_image)
@@ -231,5 +232,9 @@ class ImageProcessingThread(QObject):
                               img.shape[1],  # 行字节数
                               QtGui.QImage.Format_Grayscale8)
         return QtGui.QPixmap.fromImage(qt_img)
+
+    def image_bright(self, image, alpha=3, beta=0):
+        image_bright = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+        return image_bright
 
 

@@ -91,7 +91,6 @@ class ImageProcessingThread(QObject):
             parameter_dict['column_bias']
         )
         max_brightness, max_row, max_column = self.find_max_brightness(image_8bit, right_centres)
-        print(000)
         right_black = self.right_black(image_16bit, parameter_dict['right_black_bias'])
         left_black = self.left_black(image_16bit, parameter_dict['left_black_bias'])
 
