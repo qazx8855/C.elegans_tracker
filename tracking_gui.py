@@ -182,7 +182,6 @@ class MainWidget(QWidget):
         self.ui.track.setText("Track")
         self.ui.record.setText("Record")
         self.ui.number.setText('0')
-        self.i_thread.points.append([self.i_thread.c_x, self.i_thread.c_y])
         self.i_thread.core, self.i_thread.stage =self.i_thread.get_core()
 
         self.ui.time.setText('0')
@@ -195,6 +194,7 @@ class MainWidget(QWidget):
     def record(self):
         self.i_thread.points = []
         self.i_thread.images = []
+        self.i_thread.points.append([self.i_thread.c_x, self.i_thread.c_y])
         self.i_thread.start_time = time.time()
         self.i_thread.record = True
         self.ui.record.setText("Recording")

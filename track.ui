@@ -34,7 +34,8 @@
    </property>
    <property name="text">
     <string>Welcome to 
-Worm Tracker! Ver 1.0</string>
+Worm Tracker!
+Ver 1.0</string>
    </property>
    <property name="textFormat">
     <enum>Qt::PlainText</enum>
@@ -354,7 +355,7 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>810</x>
      <y>60</y>
-     <width>31</width>
+     <width>41</width>
      <height>16</height>
     </rect>
    </property>
