@@ -194,7 +194,7 @@ class MainWidget(QWidget):
     def record(self):
         self.i_thread.points = []
         self.i_thread.images = []
-        self.i_thread.points.append([self.i_thread.c_x, self.i_thread.c_y])
+        self.i_thread.points.append([self.i_thread.c_x, self.i_thread.c_y, self.i_thread.pixel_size])
         self.i_thread.start_time = time.time()
         self.i_thread.record = True
         self.ui.record.setText("Recording")
