@@ -38,6 +38,7 @@ class MainWidget(QWidget):
         self.ui.text_file_path_2.setText(self.save_path)
 
         self.thread = QThread()
+        self.thread = QThread()
         # 实例化线程类
         self.i_thread = ImageProcessingThread()
         # moveToThread方法把实例化线程移到Thread管理
@@ -45,6 +46,8 @@ class MainWidget(QWidget):
         # 连接槽函数
         self.i_thread.start_image_signal.connect(self.i_thread.loop)
         self.i_thread.show_img_signal.connect(self.show_image)
+        self.i_thread.update_time.connect(self.update_time)
+        self.i_thread.update_save.connect(self.update_save)
 
         # 开启线程,一直挂在后台
         self.thread.start()
@@ -58,17 +61,17 @@ class MainWidget(QWidget):
         self.ui.buttonGroup_2.buttonClicked.connect(self.mode_clicked)
         self.ui.buttonGroup_3.buttonClicked.connect(self.area_clicked)
 
-        self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
+        # self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
 
         self.ui.low.textChanged.connect(self.low)
         self.ui.high.textChanged.connect(self.high)
 
         self.ui.tracking_time.textChanged.connect(self.tracking_time)
+        self.ui.pixelsize.textChanged.connect(self.pixel_size)
 
         self.ui.frequency.textChanged.connect(self.frequency)
 
         self.ui.bias_x.textChanged.connect(self.bias_x)
-        self.ui.bias_y.textChanged.connect(self.bias_y)
 
         self.ui.c_x.textChanged.connect(self.c_x)
         self.ui.c_y.textChanged.connect(self.c_y)
@@ -83,6 +86,16 @@ class MainWidget(QWidget):
 
         self.st = time.time()
         self.et = time.time()
+
+    def pixel_size(self):
+        self.i_thread.pixel_size = float(self.ui.pixelsize.toPlainText())
+
+
+    def update_save(self, number):
+        self.ui.number.setText(str(int(number)))
+
+    def update_time(self, run_time):
+        self.ui.time.setText(str(int(run_time)))
 
     def low(self):
         string = self.ui.low.toPlainText()
@@ -102,7 +115,8 @@ class MainWidget(QWidget):
     def frequency(self):
         string = self.ui.frequency.toPlainText()
         if string.isdigit():
-            self.i_thread.frequency = int(string)
+            self.i_thread.tracking_frequency = int(string)
+
 
     def bias_x(self):
         string = self.ui.bias_x.toPlainText()
@@ -154,19 +168,24 @@ class MainWidget(QWidget):
             self.i_thread.right = True
         elif button.text() == 'Track left':
             self.i_thread.right = False
-
         print(self.i_thread.right)
 
     def button_saving_folder(self):
-        self.save_path, _ = QFileDialog.getSaveFileName(self, 'Select save path', self.cwd, 'Image(*.tif)')
+        self.save_path = QFileDialog.getExistingDirectory(self, 'Select save path', self.cwd)
         self.ui.text_file_path_2.setText(self.save_path)
+        self.i_thread.save_path = self.save_path
 
     def open(self):
         self.i_thread.is_killed = False
         self.i_thread.track = False
         self.i_thread.record = False
         self.ui.track.setText("Track")
-        self.ui.track.setText("Record")
+        self.ui.record.setText("Record")
+        self.ui.number.setText('0')
+        self.i_thread.points.append([self.i_thread.c_x, self.i_thread.c_y])
+        self.i_thread.core, self.i_thread.stage =self.i_thread.get_core()
+
+        self.ui.time.setText('0')
         self.i_thread.start_image_signal.emit()
 
     def track(self):
@@ -178,10 +197,11 @@ class MainWidget(QWidget):
         self.i_thread.images = []
         self.i_thread.start_time = time.time()
         self.i_thread.record = True
-        self.ui.track.setText("Recording")
+        self.ui.record.setText("Recording")
 
     def button_kill(self):
         self.i_thread.is_killed = True
+        # self.i_thread.bridge.close()
 
     def button_pause(self):
         if not self.i_thread.is_paused:

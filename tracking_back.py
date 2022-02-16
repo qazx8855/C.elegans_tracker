@@ -17,7 +17,7 @@ import time
 from pycromanager import Bridge
 from matplotlib import pyplot as plt
 import csv
-
+import math
 
 # 该类是作为程序后端负责打开并且处理图像的线程
 class ImageProcessingThread(QObject):
@@ -25,6 +25,8 @@ class ImageProcessingThread(QObject):
     show_img_signal = QtCore.Signal(QtGui.QPixmap)
     # 线程接收参数信号
     start_image_signal = QtCore.Signal()
+    update_time = QtCore.Signal(float)
+    update_save = QtCore.Signal(int)
 
     def __init__(self):
         super(ImageProcessingThread, self).__init__()
@@ -34,8 +36,7 @@ class ImageProcessingThread(QObject):
         self.track = False
         self.record = False
 
-        self.points = []
-        self.images = []
+
 
         self.low = 0
         self.high = 65536
@@ -53,26 +54,33 @@ class ImageProcessingThread(QObject):
         self.tracking_frequency = 2
 
         # for mode2
-        self.bias_x = 100
-        self.bias_y = 100
+        self.x_bias = 100
+
+        self.pixel_size = 1.1
+
 
         self.right = True
 
         self.c_x = 834
         self.c_y = 600
 
+        self.points = []
+        self.images = []
+
         self.cwd = os.getcwd()
-        date = datetime.today().strftime('%Y-%m-%d')
-        self.save_path = self.cwd + '/' + date
+        self.date = datetime.today().strftime('%Y-%m-%d')
+        self.save_path = self.cwd + '/' + self.date
         self.save_path.replace('\\', '/')
 
         self.show_image_fre = 10
-        self.core, self.stage = self.get_core()
+        # self.core, self.stage = self.get_core()
+        self.core = ''
+        self.stage = ''
+        self.bridge = Bridge()
 
     def get_core(self):
-        bridge = Bridge()
         # get object representing micro-manager core
-        core = bridge.get_core()
+        core = self.bridge.get_core()
 
         #### Calling core functions ###
         exposure = core.get_exposure()
@@ -82,7 +90,6 @@ class ImageProcessingThread(QObject):
         auto_shutter = core.get_property('Core', 'AutoShutter')
         core.set_property('Core', 'AutoShutter', 0)
         stage = core.get_xy_stage_position()
-        print(core, stage)
         return core, stage
 
     def loop(self):
@@ -98,17 +105,20 @@ class ImageProcessingThread(QObject):
             image = self.snap_image()
 
             if self.track:
+                max_point = self.find_max_point(image)
+                stage_position = self.core.get_xy_stage_position()
+                stage_x = stage_position.get_x()
+                stage_y = stage_position.get_y()
+
                 if self.mode == 1:
-                    # if i < self.tracking_frequency:
-                    i, x, y = self.mode1(image, self.c_x, self.c_y, i, self.tracking_frequency)
-                elif self.mode == 2:
-                    print(3)
-                    x, y = self.mode2(image, self.c_x, self.c_y, self.x_bias, self.y_bias)
+                    i, point = self.mode1(image,max_point, stage_x, stage_y, self.c_x, self.c_y, i, self.tracking_frequency)
+                else:
+                    point = self.mode2(image,max_point, stage_x, stage_y, self.c_x, self.c_y, self.x_bias)
 
                 if self.record:
-                    self.points.append([x, y])
+                    self.points.append(point)
                     self.images.append(image)
-                    print(time.time() - self.start_time)
+                    self.update_time.emit(time.time() - self.start_time)
                     if time.time() - self.start_time > self.tracking_time * 60:
                         break
 
@@ -130,61 +140,49 @@ class ImageProcessingThread(QObject):
         for i in range(len(self.images)):
             data_name = save_path + '\\' + str(i) + '.tif'
             io.imsave(data_name, self.images[i])
-        with open(save_path + '\\' + 'points.csv', 'w', newline='') as f:
+            self.update_save.emit(i)
+        head, tail = os.path.split(save_path)
+        with open(save_path + '\\' + tail + '.csv', 'w', newline='') as f:
             write = csv.writer(f)
             write.writerows(self.points)
 
-    def mode1(self, image, c_x, c_y, i, fre):
-        max_point = self.find_max_point(image)
-        stage_position = self.core.get_xy_stage_position()
-        stage_x = stage_position.get_x()
-        stage_y = stage_position.get_y()
-
-        x1 = (c_x - max_point[0]) * 1.1
-        y1 = (c_y - max_point[1]) * 1.1
-
-        if not self.right:
+    def mode1(self, image, max_point, stage_x, stage_y, c_x, c_y, i, fre):
+        x1 = (c_x - max_point[0]) * self.pixel_size
+        y1 = (c_y - max_point[1]) * self.pixel_size
+        print(c_x,c_y)
+        if self.angle == 2:
+            x = stage_x + x1
+            y = stage_y + y1
+        elif self.angle == 0:
             x = stage_x - x1
             y = stage_y - y1
 
-        else:
-            x = stage_x + x1
-            y = stage_y + y1
-
         if i == fre:
+
             self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
             i = 0
         else:
             i += 1
-        return i, stage_x, stage_y
+        return i, [stage_x, stage_y, max_point[0], max_point[1]]
 
-    def mode2(self, image, c_x, c_y, x_bias, y_bias):
-        print(c_x, c_y)
-        max_point = self.find_max_point(image)
-        print(max_point)
-        stage_position = self.core.get_xy_stage_position()
-        stage_x = stage_position.get_x()
-        stage_y = stage_position.get_y()
-        print(stage_x)
-        x1 = (c_x - max_point[0]) * 1.1
-        y1 = (c_y - max_point[1]) * 1.1
-
-        if not self.right:
+    def mode2(self, image, max_point, stage_x, stage_y, c_x, c_y, x_bias):
+        x1 = (c_x - max_point[0]) * self.pixel_size
+        y1 = (c_y - max_point[1]) * self.pixel_size
+        print(self.angle)
+        if self.angle == 2:
+            x = stage_x + x1
+            y = stage_y + y1
+        elif self.angle == 0:
             x = stage_x - x1
             y = stage_y - y1
 
-        else:
-            x = stage_x + x1
-            y = stage_y + y1
-
-        print(x, y)
-
-        if not c_x - x_bias < max_point[0] < c_x + x_bias \
-                and c_y - y_bias < max_point[1] < c_y + y_bias:
+        distance = math.dist([max_point[0], max_point[1]], [c_x, c_y])
+        if distance > x_bias:
             self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
-        return x, y
+
+        return [stage_x, stage_y, max_point[0], max_point[1]]
 
     def snap_image(self):
         self.core.snap_image()
@@ -200,9 +198,18 @@ class ImageProcessingThread(QObject):
         return image
 
     def find_max_point(self, image):
-        index = np.argmax(image)
-        r, c = divmod(index, image.shape[1])
-        point = (c, r)
+        shape_x = int(image.shape[1] / 2)
+        if not self.right:
+            image_slice = image[:,:shape_x]
+            index = np.argmax(image_slice)
+            r, c = divmod(index, image_slice.shape[1])
+            point = (c, r)
+        else:
+            image_slice = image[: , shape_x:]
+            index = np.argmax(image_slice)
+            r, c = divmod(index, image_slice.shape[1])
+            point = (c + shape_x, r)
+
         return point
 
     def transfer_16bit_to_8bit(self, image):
@@ -225,11 +232,4 @@ class ImageProcessingThread(QObject):
                               QtGui.QImage.Format_Grayscale8)
         return QtGui.QPixmap.fromImage(qt_img)
 
-    def label(self, image, centres, label_radius, bias_row, bias_column):
-        for centre in centres:
-            label_text = str(centres.index(centre))
-            self.draw_rectangle(image, centre[1], centre[0], label_text, label_radius)
 
-            left_row, left_column = self.find_left_centre(centre[1], centre[0], bias_row, bias_column)
-            self.draw_rectangle(image, left_column, left_row, label_text, label_radius)
-        return image
