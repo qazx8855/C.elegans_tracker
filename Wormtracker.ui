@@ -16,7 +16,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>C.elegans Tracker Ver 0.1</string>
+   <string>Worm Tracker Ver 1.0</string>
   </property>
   <widget class="QLabel" name="label_image">
    <property name="geometry">
@@ -904,8 +904,7 @@ p, li { white-space: pre-wrap; }
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup_3"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
-  <buttongroup name="buttonGroup_4"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
