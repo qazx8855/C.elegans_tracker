@@ -1,12 +1,7 @@
-#
-# from PySide6 import QtWidgets, QtCore
-#
-# from PySide6.QtCore import *
-
 import os
 from datetime import datetime
 from PySide2 import QtWidgets, QtCore, QtGui
-import pandas as pd
+
 from PySide2.QtCore import *
 
 from skimage import io
@@ -15,7 +10,7 @@ import cv2
 import numpy as np
 import time
 from pycromanager import Bridge
-from matplotlib import pyplot as plt
+
 import csv
 import math
 

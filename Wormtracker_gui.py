@@ -3,19 +3,7 @@ from PySide2.QtWidgets import *
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QFile
 
-import os
-from datetime import datetime
-import sys
-
-from pandas.core.dtypes.inference import is_number
-
 from Wormtracker_back import *
-
-import re
-import csv
-
-import numpy as np
-import random
 
 
 # ------------------ MainWidget ------------------
@@ -24,6 +12,7 @@ import random
 class MainWidget(QWidget):
 
     def __init__(self):
+        # 读取设计文件
         QWidget.__init__(self)
         designer_file = QFile("Wormtracker.ui")
         designer_file.open(QFile.ReadOnly)
@@ -32,11 +21,13 @@ class MainWidget(QWidget):
         self.ui = loader.load(designer_file, self)
         designer_file.close()
 
+        # 设置预设保存路径
         self.cwd = os.getcwd()
         date = datetime.today().strftime('%Y-%m-%d')
         self.save_path = self.cwd + '\\' + date
         self.ui.text_file_path_2.setText(self.save_path)
 
+        # 初始化线程
         self.thread = QThread()
         self.thread = QThread()
         # 实例化线程类
@@ -57,11 +48,10 @@ class MainWidget(QWidget):
         self.ui.mode1.setChecked(True)
         self.ui.right.setChecked(True)
 
+        # 链接按钮和文件
         self.ui.buttonGroup.buttonClicked.connect(self.angle_clicked)
         self.ui.buttonGroup_2.buttonClicked.connect(self.mode_clicked)
         self.ui.buttonGroup_3.buttonClicked.connect(self.area_clicked)
-
-        # self.ui.checkbox_mirror_symmetry.stateChanged.connect(self.checkbox_mirror_symmetry)
 
         self.ui.low.textChanged.connect(self.low)
         self.ui.high.textChanged.connect(self.high)
@@ -84,14 +74,16 @@ class MainWidget(QWidget):
         self.ui.stop.clicked.connect(self.button_kill)
         self.ui.button_saving_folder.clicked.connect(self.button_saving_folder)
 
+        # 用于测试程序运行时间
         self.st = time.time()
         self.et = time.time()
 
     def pixel_size(self):
+        #
         self.i_thread.pixel_size = float(self.ui.pixelsize.toPlainText())
 
-
     def update_save(self, number):
+        #
         self.ui.number.setText(str(int(number)))
 
     def update_time(self, run_time):
@@ -117,7 +109,6 @@ class MainWidget(QWidget):
         if string.isdigit():
             self.i_thread.tracking_frequency = int(string)
 
-
     def bias_x(self):
         string = self.ui.bias_x.toPlainText()
         if string.isdigit():
@@ -141,8 +132,6 @@ class MainWidget(QWidget):
     def checkbox_mirror_symmetry(self):
         self.i_thread.flip = not self.i_thread.flip
 
-        print(self.i_thread.flip)
-
     def angle_clicked(self):
         button = self.ui.buttonGroup.checkedButton()
         if button.text() == '0':
@@ -151,8 +140,6 @@ class MainWidget(QWidget):
         else:
             self.i_thread.angle = int(int(button.text()) / 90)
 
-        print(self.i_thread.angle)
-
     def mode_clicked(self):
         button = self.ui.buttonGroup_2.checkedButton()
         if button.text() == 'Mode tracking frequency':
@@ -160,15 +147,12 @@ class MainWidget(QWidget):
         elif button.text() == 'Mode Limit area':
             self.i_thread.mode = 2
 
-        print(self.i_thread.mode)
-
     def area_clicked(self):
         button = self.ui.buttonGroup_3.checkedButton()
         if button.text() == 'Track right':
             self.i_thread.right = True
         elif button.text() == 'Track left':
             self.i_thread.right = False
-        print(self.i_thread.right)
 
     def button_saving_folder(self):
         self.save_path = QFileDialog.getExistingDirectory(self, 'Select save path', self.cwd)
@@ -182,7 +166,7 @@ class MainWidget(QWidget):
         self.ui.track.setText("Track")
         self.ui.record.setText("Record")
         self.ui.number.setText('0')
-        self.i_thread.core, self.i_thread.stage =self.i_thread.get_core()
+        self.i_thread.core, self.i_thread.stage = self.i_thread.get_core()
 
         self.ui.time.setText('0')
         self.i_thread.start_image_signal.emit()
@@ -201,7 +185,6 @@ class MainWidget(QWidget):
 
     def button_kill(self):
         self.i_thread.is_killed = True
-        # self.i_thread.bridge.close()
 
     def button_pause(self):
         if not self.i_thread.is_paused:
@@ -215,6 +198,7 @@ class MainWidget(QWidget):
         self.ui.label_image.setPixmap(q_pixmap)
 
     def closeEvent(self, event):
+        # 关闭程序时弹出的确认窗口
         reply = QtWidgets.QMessageBox.question(self,
                                                'Quit',
                                                "Quit?",
@@ -222,17 +206,21 @@ class MainWidget(QWidget):
                                                QtWidgets.QMessageBox.No)
         if reply == QtWidgets.QMessageBox.Yes:
             event.accept()
+            # 用于关闭后台线程
             os._exit(0)
         else:
             event.ignore()
 
 
 if __name__ == '__main__':
+    # 复制Pyside2必要的库以支持Pyside2运行
     dirname = os.path.dirname(PySide2.__file__)
     plugin_path = os.path.join(dirname, 'plugins', 'platforms')
     os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
-    print(plugin_path)
+
+    # 初始化程序窗口
     app = QApplication([])
     window = MainWidget()
+    window.setWindowTitle('Worm Tracker 1.0')
     window.show()
     app.exec_()
