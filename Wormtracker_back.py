@@ -145,7 +145,6 @@ class ImageProcessingThread(QObject):
     def mode1(self, image, max_point, stage_x, stage_y, c_x, c_y, i, fre):
         x1 = (c_x - max_point[0]) * self.pixel_size
         y1 = (c_y - max_point[1]) * self.pixel_size
-        print(c_x,c_y)
         if self.angle == 2:
             x = stage_x + x1
             y = stage_y + y1
@@ -154,7 +153,6 @@ class ImageProcessingThread(QObject):
             y = stage_y - y1
 
         if i == fre:
-
             self.stage = self.core.get_xy_stage_device()
             self.core.set_xy_position(self.stage, x, y)
             i = 0
@@ -165,7 +163,6 @@ class ImageProcessingThread(QObject):
     def mode2(self, image, max_point, stage_x, stage_y, c_x, c_y, x_bias):
         x1 = (c_x - max_point[0]) * self.pixel_size
         y1 = (c_y - max_point[1]) * self.pixel_size
-        print(self.angle)
         if self.angle == 2:
             x = stage_x + x1
             y = stage_y + y1

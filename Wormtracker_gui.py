@@ -2,13 +2,14 @@ import PySide2
 from PySide2.QtWidgets import *
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QFile
-
 from Wormtracker_back import *
+
+__author__ = "{{Yuliang_Liu}} ({{s4564914}})"
+__email__ = "yuliang.liu@uqconnect.edu.au"
+__date__ = "19/03/2022"
 
 
 # ------------------ MainWidget ------------------
-
-
 class MainWidget(QWidget):
 
     def __init__(self):
@@ -48,7 +49,7 @@ class MainWidget(QWidget):
         self.ui.mode1.setChecked(True)
         self.ui.right.setChecked(True)
 
-        # 链接按钮和文件
+        # 连接按钮和函数
         self.ui.buttonGroup.buttonClicked.connect(self.angle_clicked)
         self.ui.buttonGroup_2.buttonClicked.connect(self.mode_clicked)
         self.ui.buttonGroup_3.buttonClicked.connect(self.area_clicked)
@@ -79,7 +80,14 @@ class MainWidget(QWidget):
         self.et = time.time()
 
     def pixel_size(self):
-        #
+        """
+        Check to see if a player can travel in a given direction
+        Parameters:
+            direction (str): a direction for the player to travel in.
+
+        Returns:
+            (bool): False if the player can travel in that direction without colliding otherwise True.
+        """
         self.i_thread.pixel_size = float(self.ui.pixelsize.toPlainText())
 
     def update_save(self, number):
