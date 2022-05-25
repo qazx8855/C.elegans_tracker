@@ -54,6 +54,9 @@ class MainWidget(QWidget):
         self.cwd = os.getcwd()
         self.save_path = self.cwd + '\\1.csv'
 
+        self.position_file = ''
+        self.x = []
+        self.y = []
         self.ui.text_file_path_2.setText(self.save_path)
 
         self.image_num = 0
@@ -104,6 +107,7 @@ class MainWidget(QWidget):
         # 部件处理
         self.ui.button_select_file.clicked.connect(self.button_select_file)
         self.ui.button_select_file_2.clicked.connect(self.button_save_data)
+        self.ui.button_position.clicked.connect(self.open_position_file)
 
         self.ui.button_next.clicked.connect(self.button_next)
         self.ui.button_last.clicked.connect(self.button_last)
@@ -202,6 +206,12 @@ class MainWidget(QWidget):
         self.image_num = start
         self.set_parameter()
         self.i_thread.is_killed = False
+
+        self.image_nums = []
+        self.right_brightness = []
+        self.left_brightness = []
+        self.brightness = []
+
         # for i in range(start, end + 1):
         # if self.stop:
         #     break
@@ -267,6 +277,7 @@ class MainWidget(QWidget):
         self.result_dict = result_dict
         self.set_result()
         self.results.append(result_dict)
+
         self.draw_brightness(result_dict)
         self.draw_position(result_dict)
 
@@ -295,16 +306,48 @@ class MainWidget(QWidget):
 
         dataframe.to_csv(self.save_path, sep=',', encoding='utf-8')
 
-    def draw_position(self, result_dict):
-        self.rows.append(result_dict['right_row'])
-        self.columns.append(result_dict['right_column'])
-        self.rows.append(result_dict['left_row'])
-        self.columns.append(result_dict['left_column'])
+    def open_position_file(self):
+        self.position_file, _ = QFileDialog.getOpenFileName(self, 'Select position file', '', 'Position_file(*.csv)')
+        print(self.position_file)
+        data = pd.read_csv(self.position_file, header=None)
+        data = data.values
+        scale = 1.1
+        self.x = []
+        self.y = []
+
+        for line in data:
+            self.x.append(line[0] + (line[2] - 860) * scale)
+            self.y.append(line[1] + (line[3] - 600) * scale)
 
         self.ui.MplWidget_2.canvas.axes.clear()
-        self.ui.MplWidget_2.canvas.axes.scatter(self.columns, self.rows)
+        self.ui.MplWidget_2.canvas.axes.scatter(self.x, self.y)
         self.ui.MplWidget_2.canvas.axes.set_title('Position')
         self.ui.MplWidget_2.canvas.draw()
+
+    def draw_position(self, result_dict):
+        length = result_dict['image_num']
+        print(length)
+        x = self.x[:length]
+        y = self.y[:length]
+        print(x)
+        print(y)
+
+        self.ui.MplWidget_2.canvas.axes.clear()
+        self.ui.MplWidget_2.canvas.axes.scatter(x, y)
+
+        self.ui.MplWidget_2.canvas.axes.set_title('Position')
+        self.ui.MplWidget_2.canvas.draw()
+
+    # def draw_position_old(self, result_dict):
+    #     self.rows.append(result_dict['right_row'])
+    #     self.columns.append(result_dict['right_column'])
+    #     self.rows.append(result_dict['left_row'])
+    #     self.columns.append(result_dict['left_column'])
+    #
+    #     self.ui.MplWidget_2.canvas.axes.clear()
+    #     self.ui.MplWidget_2.canvas.axes.scatter(self.columns, self.rows)
+    #     self.ui.MplWidget_2.canvas.axes.set_title('Position')
+    #     self.ui.MplWidget_2.canvas.draw()
 
     def draw_brightness(self, result_dict):
 

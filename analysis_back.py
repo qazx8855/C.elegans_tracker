@@ -1,7 +1,3 @@
-#
-# from PySide6 import QtWidgets, QtCore
-#
-# from PySide6.QtCore import *
 from PySide2 import QtWidgets, QtCore, QtGui
 import pandas as pd
 from PySide2.QtCore import *
@@ -66,6 +62,10 @@ class ImageProcessingThread(QObject):
         if image_path != '':
             image_path_n = image_path + '/' + f'{num:04}' + '.tif'
             image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
+            if image_16bit is None:
+                image_path_n = image_path + '/' + f'{num}' + '.tif'
+                image_16bit, image_8bit = self.transfer_16bit_to_8bit(image_path_n)
+            print(image_16bit.shape)
             if image_16bit is None:
                 print("wrong open image")
 
