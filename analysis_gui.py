@@ -354,13 +354,13 @@ class MainWidget(QWidget):
         self.image_nums.append(result_dict['image_num'])
         self.right_brightness.append((result_dict['right_brightness']))
         self.left_brightness.append((result_dict['left_brightness']))
-        self.brightness.append((result_dict['brightness']))
+        # self.brightness.append((result_dict['brightness']))
 
         self.ui.MplWidget.canvas.axes.clear()
         self.ui.MplWidget.canvas.axes.plot(self.image_nums, self.right_brightness)
         self.ui.MplWidget.canvas.axes.plot(self.image_nums, self.left_brightness)
-        self.ui.MplWidget.canvas.axes.plot(self.image_nums, self.brightness)
-        self.ui.MplWidget.canvas.axes.legend(('Right', 'Left', 'Brightness'), loc='upper right')
+        # self.ui.MplWidget.canvas.axes.plot(self.image_nums, self.brightness)
+        self.ui.MplWidget.canvas.axes.legend(('Right', 'Left'), loc='upper right')
         self.ui.MplWidget.canvas.axes.set_title('Brightness')
         self.ui.MplWidget.canvas.draw()
 

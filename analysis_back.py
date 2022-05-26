@@ -279,4 +279,5 @@ class ImageProcessingThread(QObject):
 
             left_row, left_column = self.find_left_centre(centre[1], centre[0], bias_row, bias_column)
             self.draw_rectangle(image, left_column, left_row, label_text, label_radius)
+            break
         return image
