@@ -832,7 +832,7 @@ p, li { white-space: pre-wrap; }
     </font>
    </property>
    <property name="text">
-    <string>Pixel size (um)</string>
+    <string>Pixel size (μm)</string>
    </property>
   </widget>
   <widget class="Line" name="line_7">
